@@ -1,0 +1,39 @@
+\section{Einleitung}
+
+\subsection{Ziel des Dokuments}
+Dieses System Design Document beschreibt die Softwarearchitektur sowie den detaillierten Entwurf (Detailed Design) der
+\emph{Emergency-Stop}-Funktionalität im Truck-System. Grundlage ist die bereits erstellte SRS, die als gegeben angenommen wird.
+Das Dokument dient als technische Spezifikation für die Implementierung und zur Sicherstellung der Konsistenz zwischen Anforderungen,
+Architektur und UML-Modellen.
+
+\subsection{Scope und Abgrenzung}
+Der Scope dieses Dokuments umfasst ausschließlich die truckseitige Software für den \emph{Emergency Stop} inklusive
+Zustandslogik, Schnittstellenkommunikation, Logging, Fehlerbehandlung sowie Ein-/Ausgabeanbindung (Buttons/LEDs).
+Funktionalitäten außerhalb des Emergency-Stop-Kontextes werden nicht entworfen und nur dann erwähnt, wenn sie für die
+Systemgrenze oder Schnittstellen notwendig sind.
+
+\subsection{Systemgrenzen und externe Schnittstellen}
+Innerhalb der Systemgrenze liegen die internen Subsysteme der Emergency-Stop-Software.
+Folgende Komponenten werden als extern gegeben angenommen und sind nicht Teil des internen Designs:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Externe Software-/Systemschnittstellen:}
+  \emph{Mission Control}, \emph{TTC}, \emph{Logging}, \emph{Drive Control Unit}
+  \item \textbf{Externe Hardware:}
+  \emph{Emergency Button (Pilzbutton)}, \emph{Soft-Stop Button}, \emph{Warnleuchten}, \emph{Soft-Stop LED}
+\end{itemize}
+
+\subsection{Interne Subsysteme (Überblick)}
+Die Emergency-Stop-Software wird in folgende interne Subsysteme gegliedert (Benennungen wie in den Diagrammen auf Englisch):
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{EmergencyStopper} (u.\,a. TTC-basierte Entscheidung/Trigger)
+  \item \textbf{StateMachineCommunication} (Kommunikation zu Mission Control und Drive Control Unit)
+  \item \textbf{Logging} (Protokollierung stop-relevanter Ereignisse)
+  \item \textbf{ErrorHandler} (Fehlererkennung und -behandlung)
+  \item \textbf{LedHandler} (Ansteuerung Warnleuchten und Soft-Stop LED)
+  \item \textbf{ButtonHandler} (Eingaben Pilzbutton und Soft-Stop Button)
+\end{itemize}
+
+\subsection{Sprache und Namenskonvention}
+Das Dokument ist auf Deutsch verfasst. Klassen-, Subsystem- und Schnittstellennamen folgen den englischen Bezeichnungen
+aus den UML-Diagrammen, um eine eindeutige Zuordnung zwischen Text und Modell sicherzustellen.

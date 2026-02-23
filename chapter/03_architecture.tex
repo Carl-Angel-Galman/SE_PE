@@ -1,0 +1,198 @@
+% ==========================================================
+% KAPITEL 3: Proposed Software Architecture (konsolidiert)
+% - enthält Context Diagram + Subsystem Decomposition logisch hintereinander
+% - Class Diagrams stehen NACH der Subsystem-Aufteilung (passt besser)
+% - Pfade/Dateinamen wie bei dir: diagramms/...
+% ==========================================================
+
+\section{Proposed Software Architecture}
+
+% ----------------------------------------------------------
+\subsection{Overview / Context}
+
+\subsubsection{Context Diagram}
+% HINWEIS: Dieses Kapitel beschreibt die Systemgrenze und alle externen Nachbarn.
+% Das zentrale Systemelement ist die Komponente "Emergency Stop".
+% Extern angebunden sind Mission Control, TTC, Logging, Drive Control Unit sowie Hardware (Buttons/LEDs).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Emergency_Stop_System_Overview.png}
+  \caption{Context Diagram / System Overview der Komponente \emph{Emergency Stop}}
+  \label{fig:context_emergency_stop}
+\end{figure}
+
+\subsubsection{Systemgrenze und externe Schnittstellen}
+Die Systemgrenze umfasst ausschließlich die truckseitige Softwarekomponente \emph{Emergency Stop}.
+Alle in Abbildung~\ref{fig:context_emergency_stop} dargestellten Nachbarsysteme und Hardware-Komponenten gelten als extern
+und werden in diesem Dokument nicht intern entworfen.
+
+\paragraph{Externe Software-/Systemschnittstellen}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Mission Control:}
+  \emph{Emergency Stop} empfängt Stop-Anforderungen über \emph{Stop Request In} via \emph{IE\_StopRequest}
+  und liefert Status-/Stop-Informationen über \emph{Stop Information Out} via \emph{IE\_StopInformation}.
+  \item \textbf{TTC:}
+  Die \emph{Time-To-Collision} wird als Entscheidungsgrundlage über \emph{Distance In} via \emph{IE\_TTC\_Information} bereitgestellt.
+  \item \textbf{Logging:}
+  Stop-relevante Ereignisse werden über \emph{Logging Out} via \emph{IE\_Logging\_Information} an das externe Logging übergeben.
+  \item \textbf{Drive Control Unit:}
+  Brems-/Stop-Anforderungen werden über \emph{Braking Out} via \emph{IE\_Stop\_Requestion} an die \emph{Drive Control Unit} ausgegeben.
+\end{itemize}
+
+\paragraph{Externe Hardware}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Buttons:}
+  Hardware-Buttonereignisse (u.\,a. Pilzbutton und Soft-Stop Button) werden über \emph{Button In} via \emph{IE\_ButtonEvent} an
+  \emph{Emergency Stop} übergeben.
+  \item \textbf{LEDs:}
+  Zustände für Warnleuchten und Soft-Stop LED werden über \emph{LED Out} via \emph{IE\_LED\_Status} an die Hardware ausgegeben.
+\end{itemize}
+
+\subsubsection{Kurze Kommunikationslogik im Kontext}
+Die Komponente \emph{Emergency Stop} nimmt Stop-relevante Eingaben (Button-Events, Stop-Requests und TTC-Informationen) entgegen,
+führt die zustandsbasierte Entscheidungslogik aus und gibt daraus resultierende Aktionen nach außen weiter
+(Brems-/Stop-Anforderung an die \emph{Drive Control Unit}, Status an \emph{Mission Control}, LED-Zustände an die Hardware sowie Logging).
+
+% ----------------------------------------------------------
+\subsection{Subsystem Decomposition}
+
+\subsubsection{Subsystem Decomposition Diagram (Package/Component)}
+% HINWEIS: Dieses Diagramm zeigt die interne Aufteilung der Komponente "Emergency Stop" in Subsysteme und deren Interfaces.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Emergecy_Stop_Subsystems.png}
+  \caption{Subsystem Decomposition der Komponente \emph{Emergency Stop}}
+  \label{fig:subsystems_emergency_stop}
+\end{figure}
+
+\subsubsection{Aufbau und Verantwortlichkeiten}
+Abbildung~\ref{fig:subsystems_emergency_stop} zeigt die interne Aufteilung der Komponente \emph{Emergency Stop} in Subsysteme.
+Zentrales Orchestrierungselement ist die \emph{State Machine}, die externe Ereignisse aufnimmt, Zustandsübergänge ausführt und
+Folgeaktionen (Stop-Anforderung, Signalisierung, Logging, Fehlerbehandlung und externe Kommunikation) koordiniert.
+
+\paragraph{State Machine (zentrales Steuerungselement)}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Nimmt Events und Requests entgegen (z.\,B. \emph{IE\_Button\_Press}, \emph{IE\_Stop\_request}, \emph{IE\_State\_Information}).
+  \item Führt die Zustandslogik für \emph{Hard Stop} und \emph{Soft Stop} aus (inkl. Übergänge und Lösen).
+  \item Orchestriert Ausgaben (Stop-Anforderung, LED-Indikation) sowie Logging und Fehlerbehandlung.
+\end{itemize}
+
+\paragraph{Communication Handler}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Kapselt die Kommunikation mit \emph{Mission Control}.
+  \item Übergibt eingehende Stop-Requests an die \emph{State Machine}.
+  \item Übermittelt Zustands-/Stop-Informationen nach außen (Status/Stop-Information).
+\end{itemize}
+
+\paragraph{Emergency Stop Logic}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Bewertet \emph{TTC}-Informationen (Input via \emph{IE\_TTC\_Information}) als Entscheidungsgrundlage.
+  \item Leitet daraus eine Stop-Entscheidung ab und übergibt diese an die \emph{State Machine} (z.\,B. via \emph{IE\_Stop\_Decision}).
+\end{itemize}
+
+\paragraph{Button Handler}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Nimmt Hardware-Buttonereignisse entgegen (Input via \emph{IE\_ButtonEvent}).
+  \item Übersetzt die Eingaben in interne Events für die \emph{State Machine} (Output via \emph{IE\_Button\_Press}).
+\end{itemize}
+
+\paragraph{LED Handler}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Setzt LED-/Warnleuchten-Anforderungen aus der \emph{State Machine} um (Input via \emph{IE\_LEDIndication}).
+  \item Gibt den LED-Status an die Hardware aus (Output via \emph{IE\_LED\_Status}).
+\end{itemize}
+
+\paragraph{Logging Handler}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Erzeugt und bündelt stop-relevante Log-Einträge (Auslösen, Zustandswechsel, Lösen).
+  \item Übergibt Logging-Informationen an die externe Logging-Schnittstelle (Output via \emph{IE\_Logging\_Information}).
+\end{itemize}
+
+\paragraph{Error Handler}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item Verarbeitet Fehler-/Ausnahmesituationen (z.\,B. aus Zustandswechseln oder Schnittstellenfehlern).
+  \item Unterstützt definierte Reaktionen in Fehlerfällen (z.\,B. Logging, Statusmeldung, definierte Fallbacks gemäß SRS).
+\end{itemize}
+
+\subsubsection{Interaktionsprinzip}
+Die Interaktion folgt dem Muster: Eingaben (Buttons/Requests/TTC) werden über spezialisierte Subsysteme aufgenommen und an die
+\emph{State Machine} überführt. Die \emph{State Machine} trifft die zustandsbasierte Entscheidung und stößt anschließend die
+erforderlichen Aktionen an (Stop-Anforderung, LED-Indikation, Logging und Fehlerbehandlung sowie externe Kommunikation).
+
+% ----------------------------------------------------------
+\subsection{Class Diagrams je Subsystem}
+% TODO: HIER für JEDES Subsystem ein Class Diagram einfügen (Attribute + public operations).
+% HINWEIS: Die folgenden Platzhalter bitte durch eure exportierten Diagramme ersetzen.
+
+\paragraph{EmergencyStopper / Emergency Stop Logic -- Class Diagram}
+% TODO: Diagramm einfügen
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\textwidth]{diagramms/class_emergency_stop_logic.png}
+%   \caption{Class Diagram: Emergency Stop Logic}
+% \end{figure}
+
+\paragraph{State Machine -- Class Diagram}
+% TODO: Diagramm einfügen
+
+\paragraph{Communication Handler -- Class Diagram}
+% TODO: Diagramm einfügen
+
+\paragraph{Button Handler -- Class Diagram}
+% TODO: Diagramm einfügen
+
+\paragraph{LED Handler -- Class Diagram}
+% TODO: Diagramm einfügen
+
+\paragraph{Logging Handler -- Class Diagram}
+% TODO: Diagramm einfügen
+
+\paragraph{Error Handler -- Class Diagram}
+% TODO: Diagramm einfügen
+
+% ----------------------------------------------------------
+\subsection{Architekturentscheidungen und Alternativen}
+% TODO:
+% - Warum diese Subsystem-Aufteilung?
+% - Welche Alternativen wurden erwogen (z.B. alles in einer Klasse vs. Handler-Aufteilung)?
+% - Technologieentscheidung (C vs. C++) und Konsequenzen für OO-Modellierung.
+
+% ----------------------------------------------------------
+\subsection{Hardware/Software Mapping}
+
+\subsubsection{Deployment Diagram}
+% TODO: HIER Deployment Diagram einfügen.
+% Mapping: welche Software-Subsysteme laufen auf welcher Hardware/ECU/Node
+% + externe Hardware (Buttons/LEDs) als Peripherie.
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\textwidth]{diagramms/deployment_diagram.png}
+%   \caption{Deployment Diagram (Emergency Stop)}
+% \end{figure}
+
+% ----------------------------------------------------------
+\subsection{Global Software Control}
+
+\subsubsection{Sequence Diagram: Emergency Stop (Interaktion)}
+% TODO: HIER mindestens 1 Sequence Diagram einfügen, das den Emergency-Stop-Ablauf zeigt.
+% Muss Klassen/Interfaces aus euren Class Diagrams wiederverwenden
+% (z.B. Trigger Pilzbutton -> Hard Stop; Pilz lösen -> Soft Stop; TTC -> Soft Stop; Logging immer).
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=\textwidth]{diagramms/seq_emergency_stop.png}
+%   \caption{Sequence Diagram: Emergency Stop}
+% \end{figure}
+
+% ----------------------------------------------------------
+\subsection{Boundary Conditions}
+
+\subsubsection{Sequence Diagram: Start-up}
+% TODO: HIER Sequence Diagram für Start-up einfügen.
+
+\subsubsection{Sequence Diagram: Shutdown}
+% TODO: HIER Sequence Diagram für Shutdown einfügen.
+
+\subsubsection{Sequence Diagram: Error Scenario}
+% TODO: HIER Sequence Diagram für ein Fehler-/Ausnahmeszenario einfügen.

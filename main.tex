@@ -1,7 +1,7 @@
 \documentclass[12pt, a4paper]{article}
 
 %###################################################################
-% PACKAGES
+% PAKETE
 %###################################################################
 
     \usepackage[utf8]{inputenc}
@@ -20,12 +20,13 @@
 
     \usepackage{array}
 
-    \usepackage[german]{babel}
+    \usepackage[ngerman]{babel}
 
     % \usepackage[backend=biber,style=numeric]{biblatex}
-    \usepackage{glossaries}
     
     \usepackage{geometry}
+    
+    \usepackage{float}
 
     \usepackage{xcolor}
     
@@ -38,7 +39,7 @@
 
 
 % ###################################################################
-% PREAMBLE
+% PRÄAMBEL
 % ###################################################################
 
 \hypersetup{
@@ -46,7 +47,7 @@ colorlinks=true,
 linkcolor=blue,
 filecolor=magenta,      
 urlcolor=cyan,
-pdftitle={Overleaf Example},
+pdftitle={Softwarearchitektur ARM-Assembler},
 pdfpagemode=FullScreen,
 }
 
@@ -56,9 +57,7 @@ pdfpagemode=FullScreen,
  top=30mm,
  }
 
-\makeglossaries
-
-\input{glossar/glossar.tex}
+\setlength{\headheight}{14.5pt}
 
 \pagestyle{fancy}
 
@@ -69,7 +68,7 @@ pdfpagemode=FullScreen,
 \title{Vertiefung Programmieren -\\
     ARM-Assembler}
 
-\author{Carl Galman}
+\author{Carl Galman, Jonas Zeller, Jonas Fischer}
 
 
 
@@ -78,7 +77,7 @@ pdfpagemode=FullScreen,
 
 
 % ###################################################################
-% DOCUMENT
+% DOKUMENT
 % ###################################################################
 
 \begin{document}
@@ -92,10 +91,25 @@ pdfpagemode=FullScreen,
 
     \newpage
 
-    \section{Einführung}
+    \listoffigures
 
+    \newpage
 
-    \printglossaries
+% =======================
+% HAUPTTEIL
+% =======================
+
+\input{chapter/01_einleitung.tex}
+
+\input{chapter/02_requirements.tex}
+
+\input{chapter/03_architecture.tex}
+
+\input{chapter/04_detailed_design.tex}
+
+\input{chapter/05_konsistenz.tex}
+
+\input{chapter/06_appendix.tex}
 
 
 \end{document}
