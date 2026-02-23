@@ -1,39 +1,57 @@
 \section{Einleitung}
 
-\subsection{Ziel des Dokuments}
-Dieses System Design Document beschreibt die Softwarearchitektur sowie den detaillierten Entwurf (Detailed Design) der
-\emph{Emergency-Stop}-Funktionalität im Truck-System. Grundlage ist die bereits erstellte SRS, die als gegeben angenommen wird.
-Das Dokument dient als technische Spezifikation für die Implementierung und zur Sicherstellung der Konsistenz zwischen Anforderungen,
-Architektur und UML-Modellen.
+\subsection{Ziel und Zweck}
+Dieses System Design Document beschreibt die Architektur und das detaillierte Design der Subkomponente
+\emph{Emergency Stop} im Truck-System. Die in einer vorgelagerten Phase erstellte SRS wird als Grundlage vorausgesetzt; dieses Dokument konkretisiert diese
+Anforderungen in einem umsetzungsnahen Software-Design.
+
+\subsection{Einordnung im Gesamtsystem}
+Die Subkomponente \emph{Emergency Stop} ist eine sicherheitsrelevante Funktion innerhalb des Truck-Gesamtsystems.
+Sie verarbeitet Eingaben aus externen Systemen und von Hardware-Komponenten und leitet daraus Stopp- und Signalisierungsaktionen ab.
+
+\subsection{Funktionsprinzip (Überblick)}
+Das \emph{Emergency Stop}-Verhalten basiert auf zwei zentralen Auslöseprinzipien:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Hardware-Auslösung:} Der Pilzbutton führt zu einem sofortigen Stopp (Hard Stop). Beim Lösen des Pilzbuttons wird
+        in einen Soft Stop übergegangen, der anschließend gezielt gelöst werden kann.
+  \item \textbf{Software-Auslösung:} Das TTC-Modul liefert die \emph{Time-To-Collision} als Entscheidungsgrundlage für einen
+        softwareseitigen Stopp (Soft Stop). Im \textbf{Normalbetrieb} befindet sich das System in der \emph{Free Zone}.
+        Sinkt der TTC-Wert in den \textbf{kritischen Bereich} (rote \emph{Safety Zone}), sendet das TTC-Modul eine \emph{Stop Request}
+        an die Subkomponente \emph{Emergency Stop}. Diese führt den Stopp entsprechend der Zustandslogik aus.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{pictures/Abstand.png}
+  \caption{Illustration des Zonenmodells als Grundlage TTC-basierter Entscheidungen (Normalbetrieb vs. Intervention/Safety)}
+  \label{fig:zones_ttc}
+\end{figure}
+
+\subsection{Kontextsystem}
+Die Subkomponente \emph{Emergency Stop} wird auf der Truck-Plattform betrieben und interagiert mit der Umgebung über klar
+abgegrenzte Schnittstellen (externe Systeme) sowie über Ein-/Ausgabe-Hardware (Buttons/LEDs/Warnleuchten).
+Die nachfolgende Abbildung dient als anschaulicher Kontext für die betrachtete Plattform.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{pictures/TruckBild.png}
+  \caption{Truck-Plattform als Kontextsystem der Subkomponente \emph{Emergency Stop}}
+  \label{fig:truck_platform}
+\end{figure}
 
 \subsection{Scope und Abgrenzung}
-Der Scope dieses Dokuments umfasst ausschließlich die truckseitige Software für den \emph{Emergency Stop} inklusive
-Zustandslogik, Schnittstellenkommunikation, Logging, Fehlerbehandlung sowie Ein-/Ausgabeanbindung (Buttons/LEDs).
-Funktionalitäten außerhalb des Emergency-Stop-Kontextes werden nicht entworfen und nur dann erwähnt, wenn sie für die
-Systemgrenze oder Schnittstellen notwendig sind.
+Der Scope dieses Dokuments umfasst ausschließlich die truckseitige Subkomponente \emph{Emergency Stop} inklusive ihrer
+Schnittstellen, der internen Architekturstruktur sowie der detaillierten Ausgestaltung des Verhaltens.
+Andere Komponenten des Truck-Systems werden nicht entworfen und nur soweit erwähnt, wie sie als externe Nachbarn oder
+Schnittstellen für \emph{Emergency Stop} relevant sind.
 
-\subsection{Systemgrenzen und externe Schnittstellen}
-Innerhalb der Systemgrenze liegen die internen Subsysteme der Emergency-Stop-Software.
-Folgende Komponenten werden als extern gegeben angenommen und sind nicht Teil des internen Designs:
+\subsection{Systemgrenze und externe Schnittstellen}
+Folgende Nachbarsysteme, Schnittstellen und Hardware-Elemente werden als \textbf{extern gegeben} angenommen und sind nicht Bestandteil des
+internen Designs (sie werden in den Diagrammen als externe Komponenten bzw. externe Hardware dargestellt):
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{Externe Software-/Systemschnittstellen:}
-  \emph{Mission Control}, \emph{TTC}, \emph{Logging}, \emph{Drive Control Unit}
+  \emph{Mission Control}, \emph{Environment Control Interface}, \emph{TTC}, \emph{Logging}, \emph{Drive Control Unit}
   \item \textbf{Externe Hardware:}
   \emph{Emergency Button (Pilzbutton)}, \emph{Soft-Stop Button}, \emph{Warnleuchten}, \emph{Soft-Stop LED}
 \end{itemize}
-
-\subsection{Interne Subsysteme (Überblick)}
-Die Emergency-Stop-Software wird in folgende interne Subsysteme gegliedert (Benennungen wie in den Diagrammen auf Englisch):
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{EmergencyStopper} (u.\,a. TTC-basierte Entscheidung/Trigger)
-  \item \textbf{StateMachineCommunication} (Kommunikation zu Mission Control und Drive Control Unit)
-  \item \textbf{Logging} (Protokollierung stop-relevanter Ereignisse)
-  \item \textbf{ErrorHandler} (Fehlererkennung und -behandlung)
-  \item \textbf{LedHandler} (Ansteuerung Warnleuchten und Soft-Stop LED)
-  \item \textbf{ButtonHandler} (Eingaben Pilzbutton und Soft-Stop Button)
-\end{itemize}
-
-\subsection{Sprache und Namenskonvention}
-Das Dokument ist auf Deutsch verfasst. Klassen-, Subsystem- und Schnittstellennamen folgen den englischen Bezeichnungen
-aus den UML-Diagrammen, um eine eindeutige Zuordnung zwischen Text und Modell sicherzustellen.
