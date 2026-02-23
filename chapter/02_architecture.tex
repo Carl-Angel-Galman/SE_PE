@@ -1,0 +1,47 @@
+\section{Proposed Software Architecture}
+\subsection{System Overview (Gesamtkontext)}
+
+\subsubsection{Übersichtsdiagramm}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Overview.png}
+  \caption{Gesamtüberblick: Systemkontext und Kommunikations-/Datenflüsse}
+  \label{fig:overview_total}
+\end{figure}
+
+\subsubsection{Kurzbeschreibung}
+Abbildung~\ref{fig:overview_total} ordnet die Emergency-Stop-Funktion in den Gesamtkontext ein.
+Sensorik und Hardware-I/O werden auf den Truck-Knoten verarbeitet; die Bedien- und Leitsoftware (Mission Control) kommuniziert
+über WLAN mit dem System. Für den Emergency Stop sind insbesondere die Button-/Schalter-Eingänge sowie die Ausgabe an Aktorik
+(z.\,B. Bremsanforderung) und Signalisierung relevant.
+
+\subsection{Hardware/Software Mapping (Deployment)}
+\label{sec:deployment}
+
+\subsubsection{Deployment Diagram}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Deployment.png}
+  \caption{Deployment: Zuordnung von Subkomponenten zu Hardware-Knoten}
+  \label{fig:deployment}
+\end{figure}
+
+\subsubsection{Zuordnung der Komponenten}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Jetson AGX:} \emph{TTC-Observer}
+  \item \textbf{Arduino Mega ``Master'':} \emph{EnvironmentControl Interface}
+  \item \textbf{Arduino Mega ``Slave'':} \emph{Emergency Stop}, \emph{DriveControlUnit}, \emph{Logging}
+\end{itemize}
+
+\subsubsection{Begründung der Verteilung}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Arduino Mega ``Slave'':} Bündelt sicherheitskritische Funktionen. \emph{Emergency Stop} und \emph{DriveControlUnit}
+        liegen gemeinsam, um Stop-Anforderungen mit geringer Latenz und ohne zusätzliche Netz-/Knotenabhängigkeiten umzusetzen.
+        \emph{Logging} läuft ebenfalls dort, damit Stop-Ereignisse unmittelbar erfasst werden und auch bei Teilausfällen anderer Knoten
+        nicht verloren gehen.
+  \item \textbf{Arduino Mega ``Master'':} Führt das \emph{EnvironmentControl Interface} aus und kapselt die hardware-nahe I/O-Anbindung
+        (z.\,B. Einlesen von Schaltern/Buttons und Ansteuerung von Signalisierung). Dadurch bleibt die sicherheitskritische Logik auf dem
+        Slave von I/O-Details getrennt.
+  \item \textbf{Jetson AGX:} Führt den \emph{TTC-Observer} aus. Die TTC-Auswertung ist rechenintensiver und wird auf einer leistungsfähigen
+        Plattform ausgeführt; daraus resultierende Stop-Informationen werden an die sicherheitskritische Logik weitergegeben.
+\end{itemize}
