@@ -7,7 +7,7 @@ Anforderungen in einem umsetzungsnahen Software-Design.
 
 \subsection{Einordnung im Gesamtsystem}
 Die Subkomponente \emph{Emergency Stop} ist eine sicherheitsrelevante Funktion innerhalb des Truck-Gesamtsystems.
-Sie verarbeitet Eingaben aus externen Systemen und von Hardware-Komponenten und leitet daraus Stopp- und Signalisierungsaktionen ab.
+Sie verarbeitet Eingaben aus externen Systemen und von Hardware-Komponenten und führt deren Stopp befehle aus. Außerdem ist es Aufgabe des Systems, das diese Stopps geloggt und zurückvollziehbar sind.
 
 \subsection{Funktionsprinzip (Überblick)}
 Das \emph{Emergency Stop}-Verhalten basiert auf zwei zentralen Auslöseprinzipien:
@@ -22,20 +22,15 @@ Das \emph{Emergency Stop}-Verhalten basiert auf zwei zentralen Auslöseprinzipie
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{pictures/Abstand.png}
-  \caption{Illustration des Zonenmodells als Grundlage TTC-basierter Entscheidungen (Normalbetrieb vs. Intervention/Safety)}
+  \includegraphics[width=0.8\textwidth]{pictures/Abstand.png}
+  \caption{Illustration des Zonenmodells als Grundlage TTC-basierter Entscheidungen (Normalbetrieb vs. Intervention/Safety) Quelle: Stimac}
   \label{fig:zones_ttc}
 \end{figure}
-
-\subsection{Kontextsystem}
-Die Subkomponente \emph{Emergency Stop} wird auf der Truck-Plattform betrieben und interagiert mit der Umgebung über klar
-abgegrenzte Schnittstellen (externe Systeme) sowie über Ein-/Ausgabe-Hardware (Buttons/LEDs/Warnleuchten).
-Die nachfolgende Abbildung dient als anschaulicher Kontext für die betrachtete Plattform.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{pictures/TruckBild.png}
-  \caption{Truck-Plattform als Kontextsystem der Subkomponente \emph{Emergency Stop}}
+  \caption{Truck-Plattform als Kontextsystem der Subkomponente \emph{Emergency Stop} Quelle: Stimac}
   \label{fig:truck_platform}
 \end{figure}
 

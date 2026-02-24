@@ -1,3 +1,4 @@
+\newpage
 \section{Proposed Software Architecture}
 \subsection{System Overview (Gesamtkontext)}
 
@@ -15,6 +16,35 @@ Sensorik und Hardware-I/O werden auf den Truck-Knoten verarbeitet; die Bedien- u
 über WLAN mit dem System. Für den Emergency Stop sind insbesondere die Button-/Schalter-Eingänge sowie die Ausgabe an Aktorik
 (z.\,B. Bremsanforderung) und Signalisierung relevant.
 
+Zusätzlich sind die internen Knoten wie folgt gekoppelt:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Arduino Mega ``Master'' $\leftrightarrow$ Arduino Mega ``Slave'':} Verbindung über \textbf{CAN} zur robusten, deterministischen Kommunikation.
+  \item \textbf{Jetson AGX / Arduino Mega ``Master'' / WLAN-Modul:} Anbindung über ein internes \textbf{LAN} zum \emph{WLAN Client}.
+\end{itemize}
+
+Die Hardware-Anbindung ist so verteilt, dass sicherheitskritische und zeitkritische Signale möglichst nah an der Ausführungslogik liegen:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Arduino Mega ``Master'':} \emph{Soft-Stop Schalter} sowie \emph{Lichter/Signalisierung} (z.\,B. Blinklicht).
+  \item \textbf{Jetson AGX:} Anbindung der \emph{zwei LiDAR-Sensoren} zur Umgebungserfassung (Input für TTC-Auswertung).
+  \item \textbf{Arduino Mega ``Slave'':} \emph{Pilz-Notknopf (Notaus)} zur direkten, sicherheitskritischen Stop-Auslösung.
+\end{itemize}
+
+\subsubsection{Subsysteme im Kontext der Emergency-Stop-Funktion}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/SubSystems.png}
+  \caption{Aufteilung und Verbindung der Subsysteme}
+  \label{fig:subsystems_context}
+\end{figure}
+
+Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten und deren Schnittstellen.
+Der \emph{TTC-Observer} liefert Informationen/Ereignisse an \emph{Emergency Stop}. Über das \emph{EnvironmentControl Interface} werden
+Eingänge (z.\,B. ButtonStates) und Ausgänge (z.\,B. LEDs/Signalisierung) angebunden. \emph{Emergency Stop} stößt Stop-Anforderungen an die
+\emph{DriveControlUnit} an und erzeugt Log-Ausgaben an \emph{Logging}. Die genaue Ausgestaltung der Klassen/Interfaces wird in den
+Klassendiagrammen (folgende Abschnitte) beschrieben.
+
+% TODO: HIER Platzhalter für die Klassendiagramme einfügen (Attribute + public operations)
+
 \subsection{Hardware/Software Mapping (Deployment)}
 \label{sec:deployment}
 
@@ -22,7 +52,7 @@ Sensorik und Hardware-I/O werden auf den Truck-Knoten verarbeitet; die Bedien- u
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms/Deployment.png}
-  \caption{Deployment: Zuordnung von Subkomponenten zu Hardware-Knoten}
+  \caption{Zuordnung von Subkomponenten zur Hardware}
   \label{fig:deployment}
 \end{figure}
 
