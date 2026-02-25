@@ -1,5 +1,7 @@
 \newpage
 \section{Proposed Software Architecture}
+
+% ==========================================================
 \subsection{System Overview (Gesamtkontext)}
 
 \subsubsection{Übersichtsdiagramm}
@@ -18,15 +20,15 @@ Sensorik und Hardware-I/O werden auf den Truck-Knoten verarbeitet; die Bedien- u
 
 Zusätzlich sind die internen Knoten wie folgt gekoppelt:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Master'' $\leftrightarrow$ Arduino Mega ``Slave'':} Verbindung über \textbf{CAN} zur robusten, deterministischen Kommunikation.
-  \item \textbf{Jetson AGX / Arduino Mega ``Master'' / WLAN-Modul:} Anbindung über ein internes \textbf{LAN} zum \emph{WLAN Client}.
+  \item \textbf{Arduino Mega ``Master'' $\leftrightarrow$ Arduino Mega ``Slave'':} Verbindung über \textbf{CAN}.
+  \item \textbf{Jetson AGX / Arduino Mega ``Master'' / WLAN-Modul:} Anbindung über internes \textbf{LAN} zum \emph{WLAN Client}.
 \end{itemize}
 
-Die Hardware-Anbindung ist so verteilt, dass sicherheitskritische und zeitkritische Signale möglichst nah an der Ausführungslogik liegen:
+Die Hardware-Anbindung ist wie folgt verteilt:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{Arduino Mega ``Master'':} \emph{Soft-Stop Schalter} sowie \emph{Lichter/Signalisierung} (z.\,B. Blinklicht).
-  \item \textbf{Jetson AGX:} Anbindung der \emph{zwei LiDAR-Sensoren} zur Umgebungserfassung (Input für TTC-Auswertung).
-  \item \textbf{Arduino Mega ``Slave'':} \emph{Pilz-Notknopf (Notaus)} zur direkten, sicherheitskritischen Stop-Auslösung.
+  \item \textbf{Jetson AGX:} Anbindung der \emph{zwei LiDAR-Sensoren}.
+  \item \textbf{Arduino Mega ``Slave'':} \emph{Pilz-Notknopf (Notaus)}.
 \end{itemize}
 
 \subsubsection{Subsysteme im Kontext der Emergency-Stop-Funktion}
@@ -37,14 +39,27 @@ Die Hardware-Anbindung ist so verteilt, dass sicherheitskritische und zeitkritis
   \label{fig:subsystems_context}
 \end{figure}
 
-Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten und deren Schnittstellen.
-Der \emph{TTC-Observer} liefert Informationen/Ereignisse an \emph{Emergency Stop}. Über das \emph{EnvironmentControl Interface} werden
-Eingänge (z.\,B. ButtonStates) und Ausgänge (z.\,B. LEDs/Signalisierung) angebunden. \emph{Emergency Stop} stößt Stop-Anforderungen an die
-\emph{DriveControlUnit} an und erzeugt Log-Ausgaben an \emph{Logging}. Die genaue Ausgestaltung der Klassen/Interfaces wird in den
-Klassendiagrammen (folgende Abschnitte) beschrieben.
+Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten und Schnittstellen:
+\emph{TTC-Observer} liefert Informationen/Ereignisse an \emph{Emergency Stop}, das \emph{EnvironmentControl Interface} bindet I/O an,
+\emph{DriveControlUnit} setzt Stop-/Fahranforderungen um und \emph{Logging} protokolliert Ereignisse.
 
-% TODO: HIER Platzhalter für die Klassendiagramme einfügen (Attribute + public operations)
+% ==========================================================
+\subsection{Subsystem Decomposition und Klassendesign}
 
+\subsubsection{Klassendiagramm (Übersicht)}
+% Hinweis: Dieses Diagramm deckt die geforderte Klassensicht (Attribute + public Operations) ab.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Klassendiagramm_Übersicht.png}
+  \caption{Klassendiagramm: Überblick über zentrale Klassen und Zustände}
+  \label{fig:class_overview}
+\end{figure}
+
+% Optional: wenn ihr die einzelnen Klassendiagramme später separat habt, hier weitere Platzhalter:
+% \paragraph{Weitere Klassendiagramme (optional)}
+% TODO: ggf. zusätzliche Klassendiagramme je Subsystem einfügen
+
+% ==========================================================
 \subsection{Hardware/Software Mapping (Deployment)}
 \label{sec:deployment}
 
@@ -65,13 +80,69 @@ Klassendiagrammen (folgende Abschnitte) beschrieben.
 
 \subsubsection{Begründung der Verteilung}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Slave'':} Bündelt sicherheitskritische Funktionen. \emph{Emergency Stop} und \emph{DriveControlUnit}
-        liegen gemeinsam, um Stop-Anforderungen mit geringer Latenz und ohne zusätzliche Netz-/Knotenabhängigkeiten umzusetzen.
-        \emph{Logging} läuft ebenfalls dort, damit Stop-Ereignisse unmittelbar erfasst werden und auch bei Teilausfällen anderer Knoten
-        nicht verloren gehen.
-  \item \textbf{Arduino Mega ``Master'':} Führt das \emph{EnvironmentControl Interface} aus und kapselt die hardware-nahe I/O-Anbindung
-        (z.\,B. Einlesen von Schaltern/Buttons und Ansteuerung von Signalisierung). Dadurch bleibt die sicherheitskritische Logik auf dem
-        Slave von I/O-Details getrennt.
-  \item \textbf{Jetson AGX:} Führt den \emph{TTC-Observer} aus. Die TTC-Auswertung ist rechenintensiver und wird auf einer leistungsfähigen
-        Plattform ausgeführt; daraus resultierende Stop-Informationen werden an die sicherheitskritische Logik weitergegeben.
+  \item \textbf{Arduino Mega ``Slave'':} sicherheitskritische Funktionen + Logging lokal.
+  \item \textbf{Arduino Mega ``Master'':} kapselt Hardware-I/O (Interface-Schicht).
+  \item \textbf{Jetson AGX:} TTC-Auswertung (\emph{TTC-Observer}) und Weitergabe an Emergency Stop.
 \end{itemize}
+
+% ==========================================================
+\subsection{Global Software Control}
+
+\subsubsection{Sequence Diagram: TTC}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_TTC.png}
+  \caption{Sequence Diagram: Interaktion TTC-Observer $\rightarrow$ TTC Handler}
+  \label{fig:seq_ttc}
+\end{figure}
+
+\subsubsection{Sequence Diagram: EnvironmentControl Interface}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_EnvironmentControl_Interface.png}
+  \caption{Sequence Diagram: Abfragen von Button-States und Setzen von LEDs}
+  \label{fig:seq_envctrl}
+\end{figure}
+
+\subsubsection{Sequence Diagram: Drive Control Unit}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_Drive_Controll_Unit.png}
+  \caption{Sequence Diagram: Stop/Enable/Speed via Drive Controller Handler}
+  \label{fig:seq_drive}
+\end{figure}
+
+\subsubsection{Sequence Diagram: Logging}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_Sequenz_Logging.png}
+  \caption{Sequence Diagram: Logging von StateChange, Error und Trace}
+  \label{fig:seq_logging}
+\end{figure}
+
+% ==========================================================
+\subsection{Boundary Conditions}
+
+\subsubsection{Sequence Diagram: Start-up}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_Startup.png}
+  \caption{Sequence Diagram: Start-up / Initialisierung}
+  \label{fig:seq_startup}
+\end{figure}
+
+\subsubsection{Sequence Diagram: Shutdown}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_ShutDown.png}
+  \caption{Sequence Diagram: Shutdown}
+  \label{fig:seq_shutdown}
+\end{figure}
+
+\subsubsection{Sequence Diagram: Error Scenario}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{diagramms/Seq_Error1.png}
+  \caption{Sequence Diagram: Error Scenario (Beispiel)}
+  \label{fig:seq_error}
+\end{figure}
