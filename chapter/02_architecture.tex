@@ -87,15 +87,46 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
 
 % ==========================================================
 \subsection{Global Software Control}
+Dieser Abschnitt beschreibt die Interaktion
+zwischen dem \emph{Emergency Stop}-Subsystem und den restlichen Subsystemen.
+
 
 \subsubsection{Sequence Diagram: TTC}
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms/Seq_TTC.png}
-  \caption{Sequence Diagram: Interaktion TTC-Observer $\rightarrow$ TTC Handler}
+  \caption{Sequence Diagram: Interaktion TTC-Observer zu TTC Handler}
   \label{fig:seq_ttc}
 \end{figure}
 
+Die Abbildung \ref{fig:seq_ttc} zeigt die Interaktion 
+zwischen dem \emph{Emergency Stop}-Subsystem und
+dem \emph{TTC-Observer}-Subsystem. Der \emph{TTC-Observer}
+besitzt nur Zugriff auf die Funktionen des \emph{TTC Handler},
+welcher die Schnittstelle zum \emph{Emergency Stop} darstellt.
+Der \emph{TTC Observer} kann drei verschiedene Funktionen,
+basierend auf den berechneten Werten des TTC, aufrufen:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{stopRequest():} Stop-Anforderung, wenn der berechnete TTC-Wert in der Safety-Zone liegt.
+  \item \textbf{haltRequest():} Verzögerungs-Anforderung, wenn der berechnete TTC-Wert in der Interventions-Zone liegt.
+  \item \textbf{enableDriving():} Freigabe der Fahrfunktion, wenn der berechnete TTC-Wert in der Free-Zone liegt.
+\end{itemize}
+Ob eine dieser drei Funktionen aufgerufen wurde,
+wird zyklisch von dem \emph{System State Manager}
+überprüft, um diese Aktion entsprechend umzusetzen.
+Dies geschieht alle 5ms, da es sich um eine sicherheitskritische Funktion handelt und somit eine schnelle Reaktionszeit gewährleistet sein muss.
+Zur Überprüfung stellt der \emph{TTC Handler} drei Getter-Funktionen bereit, welche den aktuellen Status der drei Funktionen zurückliefern:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{getStopRequest()}
+  \item \textbf{getHaltRequest()}
+  \item \textbf{getEnableDriving()}
+\end{itemize}
+Der \emph{TTC-Observer} besorgt sich
+die aktuelle Geschwindigkeit des Trucks
+ebenfalls alle 5ms über die Funktion \textbf{getCurrentSpeed()} des \emph{TTC Handlers}.
+Dies gewährleistet, dass die TTC-Werte immer angemesen aktuell sind.
+
+% TODO: Beschriftung im Diagramm ist verwechselt und isButton Pressed Funktion nicht richtig Zeit auch 5ms
 \subsubsection{Sequence Diagram: EnvironmentControl Interface}
 \begin{figure}[H]
   \centering
@@ -103,6 +134,31 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \caption{Sequence Diagram: Abfragen von Button-States und Setzen von LEDs}
   \label{fig:seq_envctrl}
 \end{figure}
+Die Abbildung \ref{fig:seq_envctrl} zeigt die Interaktion zwischen dem \emph{Emergency Stop}-Subsystem und dem \emph{EnvironmentControl Interface}.
+Der \emph{EnvironmentControl Interface} stellt Funktionen bereit, um die Zustände der Not-Aus- und Soft-Stop-Buttons abzufragen sowie die Signalisierung (z.\,B. LEDs) zu steuern.
+Des Weiteren bietet es die Daten der Abstandsmessung der LiDAR-Sensoren an.
+Der \emph{System State Manager} ruft zyklisch alle 5ms die Funktion \textbf{isButtonPressed()} auf, um die aktuellen Zustände der Buttons zu überprüfen.
+Der \emph{Button Handler} reicht diese Anfragen an die entsprechenden
+Schnittstellenfunktionen des \emph{EnvironmentControl Interface} weiter
+und erhält die aktuellen Zustände der Not-Aus- und Soft-Stop-Buttons zurück.
+Diese Informationen werden anschließend dem \emph{System State Manager} zur Verfügung gestellt, um die entsprechenden Aktionen (z.\,B. Stoppen des Fahrzeugs) zu steuern.
+
+Die Interaktion mit den LEDs erfolgt über den
+\emph{LED Handler}. Der \emph{System State Manager}
+kann dessen Funktionen \textbf{blinkCyclic_WarningLight()}
+und \textbf{toggle_SoftstopLED()} aufrufen, um die Signalisierung entsprechend der aktuellen Systemzustände zu steuern.
+Das Warning-Light (Blinklicht) auf dem Fahrzeug wird aktiviert, wenn sich das System im Not-Aus-Zustand befindet, um eine visuelle Warnung anzuzeigen.
+Die SoftstopLED bezieht sich auf die LED um den Soft-Stop-Button.
+Die Schnittstelle zum \emph{EnvironmentControl Interface}
+bietet die Funktion \textbf{setLEDState()}.
+Im Falle des Blinklichts wird die LED zyklisch an- und ausgeschaltet, um das Blinken zu realisieren.
+
+%TODO: Geschwindigkeisberechnung ergibt keinen Sinn
+
+Die Abstraktion der Hardware-Interaktion ermöglicht einfache
+Erweiterungen oder Anpassungen der Hardware, ohne dass die Hauptlogik des \emph{Emergency Stop}-Subsystems geändert werden muss.
+
+
 
 \subsubsection{Sequence Diagram: Drive Control Unit}
 \begin{figure}[H]
@@ -112,6 +168,14 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \label{fig:seq_drive}
 \end{figure}
 
+%TODO: speed Control braucht Parameter
+Die Abbildung \ref{fig:seq_drive} zeigt die Interaktion zwischen dem \emph{Emergency Stop}-Subsystem und der \emph{Drive Control Unit}.
+Diese wird in dem \emph{Drive Controller Handler} abstrahiert.
+Der \emph{System State Manager} sendet die Fahrtanweisungen
+mithilfe der Funktionen \textbf{stopRequest()}, \textbf{enableDriving()} und \textbf{speedControl()}.
+Diese Funktionen leitet der \emph{Drive Controller Handler} an die entsprechenden Schnittstellenfunktionen der \emph{Drive Control Unit} weiter, um die gewünschten Aktionen umzusetzen.
+Die Abstraktion ermöglicht erneut einfache Änderungen an Software oder Hardware der Drive Control Unit, ohne dass die Hauptlogik des \emph{Emergency Stop}-Subsystems angepasst werden muss.
+
 \subsubsection{Sequence Diagram: Logging}
 \begin{figure}[H]
   \centering
@@ -119,7 +183,18 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \caption{Sequence Diagram: Logging von StateChange, Error und Trace}
   \label{fig:seq_logging}
 \end{figure}
+%TODO: Loggen von Fehlern und State Changes braucht Parameter
 
+Die Abbildung \ref{fig:seq_logging} zeigt die Interaktion zwischen dem \emph{Emergency Stop}-Subsystem und der \emph{Logging}-Komponente.
+Der \emph{Logging Handler} stellt Funktionen bereit, um wichtige Ereignisse wie State Changes, Fehler und Trace-Informationen zu protokollieren.
+Der \emph{System State Manager} ruft die entsprechenden Funktionen des \emph{Logging Handlers} auf, um diese relevante Informationen zu protokollieren.
+Diese Funktionen sind:
+\begin{itemize}
+  \item \textbf{logStateChange()}: Protokolliert Änderungen im Systemzustand, z.\,B. Wechsel von "Initialization" zu "SoftStop".
+  \item \textbf{logError()}: Protokolliert aufgetretene Fehler, z.\,B. Initialisierungsfehler.
+  \item \textbf{traceFunctionCall()}: Protokolliert den Aufruf von Funktionen, z.\,B. Steuerung des Fahrzeugs.
+\end{itemize}
+Diese Funktionen erzeugen fertige Log- bzw Trace-Einträge, welche mit allen relevanten Informationen (wie Timestamp) versehen sind und anschließend von der \emph{Logging}-Komponente verarbeitet und gespeichert werden.
 % ==========================================================
 \subsection{Boundary Conditions}
 
@@ -131,6 +206,14 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \label{fig:seq_startup}
 \end{figure}
 
+Die Abbildung \ref{fig:seq_startup} zeigt das
+Verhalten des \emph{Emergency Stop}-Subsystems während des Start-up-Prozesses.
+Der \emph{System State Manager} durchläuft die Initialisierungsphase, in der die notwendigen
+Handler und Schnittstellen initialisiert werden.
+Jeder dieser Initialisierungsfunktionen gibt einen Fehlerstatus zurück, der überprüft wird.
+Ist kein Fehler aufgetreten, wechselt der Systemzustand von "Initialization" zu "SoftStop", was den Normalbetrieb einleitet.
+Tritt jedoch ein Fehler auf, wird dieser protokolliert und der Systemzustand wechselt in den "Error" Zustand.
+
 \subsubsection{Sequence Diagram: Shutdown}
 \begin{figure}[H]
   \centering
@@ -139,6 +222,13 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \label{fig:seq_shutdown}
 \end{figure}
 
+Die Abbildung \ref{fig:seq_shutdown} zeigt das Verhalten des \emph{Emergency Stop}-Subsystems während des Shutdown-Prozesses.
+Der \emph{System State Manager} sendet zunächst eine Stop-Anforderung an die \emph{Drive Control Unit}, um das Fahrzeug sicher zum Stillstand zu bringen.
+Der Shutdown-Prozess wird anschließend geloggt.
+Außerdem wird die Kommunikationsschnittstelle zum \emph{Mission-Control}
+sauber geschlossen, um Fehler bei der nächsten Initialisierung zu vermeiden.
+Dies markiert den Abschluss des Shutdown-Prozesses.
+
 \subsubsection{Sequence Diagram: Error Scenario}
 \begin{figure}[H]
   \centering
@@ -146,3 +236,13 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \caption{Sequence Diagram: Error Scenario (Beispiel)}
   \label{fig:seq_error}
 \end{figure}
+
+%TODO: Inkonsistente Namen für Drive Controller Handler
+
+Die Abbildung \ref{fig:seq_error} zeigt ein Beispiel für ein Fehler-Szenario im \emph{Emergency Stop}-Subsystem.
+In diesem Szenario tritt während der Anfrage vom \emph{System State Manager}
+an den \emph{TTC handler} ob eine Stop-Anforderung vorliegt, ein Fehler auf.
+Der \emph{TTC Handler} gibt einen Fehlerstatus zurück, der vom \emph{System State Manager} erkannt wird.
+In diesem Fall wird der Systemzustand auf "Error" gesetzt, um anzuzeigen, dass ein Fehler aufgetreten ist.
+Dieser stellt, entsprechend des Eintritts in den Error-Zustand, eine Stop-Anforderung an den \emph{Drive Controller Handler}.
+Der Fehler wird außerdem protokolliert, um die Diagnose und Fehlerbehebung zu erleichern.
