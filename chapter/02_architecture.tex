@@ -3,8 +3,6 @@
 
 % ==========================================================
 \subsection{System Overview (Gesamtkontext)}
-
-\subsubsection{Übersichtsdiagramm}
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms/Overview.png}
@@ -13,35 +11,61 @@
 \end{figure}
 
 \subsubsection{Kurzbeschreibung}
-Abbildung~\ref{fig:overview_total} ordnet die Emergency-Stop-Funktion in den Gesamtkontext ein.
-Sensorik und Hardware-I/O werden auf den Truck-Knoten verarbeitet; die Bedien- und Leitsoftware (Mission Control) kommuniziert
-über WLAN mit dem System. Für den Emergency Stop sind insbesondere die Button-/Schalter-Eingänge sowie die Ausgabe an Aktorik
-(z.\,B. Bremsanforderung) und Signalisierung relevant.
+Abbildung~\ref{fig:overview_total} zeigt den Gesamtkontext der Emergency-Stop-Funktion innerhalb des Truck-Systems. Die Distanzsensorik wird auf der Komponente 
+\emph{Jetson Nano} verarbeitet, während die Hardware-I/O über die Truck-Knoten \emph{Master} und \emph{Slave} angebunden sind. Die Bedien- und Leitsoftware 
+\emph{Mission Control} kommuniziert über WLAN mit dem System und ermöglicht die Fernsteuerung, insbesondere das Senden von Stop- und Fahrfreigabesignalen.
 
-Zusätzlich sind die internen Knoten wie folgt gekoppelt:
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Master'' $\leftrightarrow$ Arduino Mega ``Slave'':} Verbindung über \textbf{CAN}.
-  \item \textbf{Jetson AGX / Arduino Mega ``Master'' / WLAN-Modul:} Anbindung über internes \textbf{LAN} zum \emph{WLAN Client}.
-\end{itemize}
+Für den Emergency Stop sind insbesondere die Eingaben über Taster oder Fernsteuerung sowie die Ansteuerung von Aktorik relevant, um Stop- oder Fahrfreigaben umzusetzen. 
+Zusätzlich bilden die Distanzinformationen die Grundlage für die Berechnung der Time-To-Collision (TTC) und damit für softwarebasierte Stop-Entscheidungen.
 
-Die Hardware-Anbindung ist wie folgt verteilt:
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Master'':} \emph{Soft-Stop Schalter} sowie \emph{Lichter/Signalisierung} (z.\,B. Blinklicht).
-  \item \textbf{Jetson AGX:} Anbindung der \emph{zwei LiDAR-Sensoren}.
-  \item \textbf{Arduino Mega ``Slave'':} \emph{Pilz-Notknopf (Notaus)}.
-\end{itemize}
 
-\subsubsection{Subsysteme im Kontext der Emergency-Stop-Funktion}
+
+
+
+% Zusätzlich sind die internen Knoten wie folgt gekoppelt:
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Arduino Mega ``Master'' $\leftrightarrow$ Arduino Mega ``Slave'':} Verbindung über \textbf{CAN}.
+%   \item \textbf{Jetson AGX / Arduino Mega ``Master'' / WLAN-Modul:} Anbindung über internes \textbf{LAN} zum \emph{WLAN Client}.
+% \end{itemize}
+
+% Die Hardware-Anbindung ist wie folgt verteilt:
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Arduino Mega ``Master'':} \emph{Soft-Stop Schalter} sowie \emph{Lichter/Signalisierung} (z.\,B. Blinklicht).
+%   \item \textbf{Jetson AGX:} Anbindung der \emph{zwei LiDAR-Sensoren}.
+%   \item \textbf{Arduino Mega ``Slave'':} \emph{Pilz-Notknopf (Notaus)}.
+% \end{itemize}
+
+\subsubsection{Subsysteme und Schnittstellen von Emergency Stop}
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms/SubSystems.png}
-  \caption{Aufteilung und Verbindung der Subsysteme}
+  \caption{Gesamtüberblick: Systemkontext und Kommunikations-/Datenflüsse}
   \label{fig:subsystems_context}
 \end{figure}
 
-Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten und Schnittstellen:
-\emph{TTC-Observer} liefert Informationen/Ereignisse an \emph{Emergency Stop}, das \emph{EnvironmentControl Interface} bindet I/O an,
-\emph{DriveControlUnit} setzt Stop-/Fahranforderungen um und \emph{Logging} protokolliert Ereignisse.
+Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten 
+sowie deren Schnittstellen und Datenflüsse.
+
+Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision (TTC). 
+Auf Basis dieser Berechnung erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{System State Manager}.
+
+Das \emph{EnvironmentControl Interface} stellt die Anbindung an die Hardware dar. Es liest die 
+Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{System State Manager} 
+weiter. Zusätzlich steuert es die Aktorik, insbesondere Warnleuchten und Soft-Stop-LEDs, basierend 
+auf den vom System State Manager vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung.
+
+Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. Außerdem liefert sie 
+die aktuelle Fahrzeuggeschwindigkeit, welche an den \emph{System State Manager} und den \emph{TTC-Observer} weitergegeben wird.
+
+Der \emph{System State Manager} bildet die zentrale Steuereinheit des Emergency-Stop-Systems. Er 
+verarbeitet alle eingehenden Ereignisse aus den Subsystemen, verwaltet die Zustände und steuert 
+die Ausgabe von Stop- und Fahrfreigaben. Zudem koordiniert er die Interaktion zwischen den 
+Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden.
+
+Das \emph{Logging}-Modul protokolliert Zustandsänderungen sowie Fehlerereignisse und ermöglicht 
+damit eine Nachvollziehbarkeit des Systemverhaltens.
+
+\newpage
 
 % ==========================================================
 \subsection{Subsystem Decomposition und Klassendesign}
@@ -55,6 +79,35 @@ Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevan
   \label{fig:class_overview}
 \end{figure}
 
+
+
+Das Klassendiagramm in Abbildung~\ref{fig:class_diagram} gibt einen Überblick über die zentralen Klassen, deren Beziehungen sowie die Struktur der Zustandslogik des Emergency-Stop-Systems.
+
+Die Architektur basiert auf einer klaren Trennung von Zuständigkeiten und einer 
+Koordination durch den \emph{System State Manager}. Die Subkomponenten sind so gestaltet, dass 
+sie ihre spezifischen Funktionen erfüllen, während der \emph{System State Manager} die Gesamtlogik und Synchronisation übernimmt.
+
+Der System State Manager besitzt eine Referenz auf die Aktuelle Instanz der IState-Klasse. Die Klasse \emph{IState} 
+ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, die von den konkreten Zustandsklassen implementiert werden. 
+Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwendbaren Art und Weise realisiert.
+Die Zustandswechsel werden mit einer \emph{State\_Table\_Entry} realisiert mittels der \emph{State\_Table\_Entry} Datenstruktur,
+die die aktuelle State, das Event und die nächste State enthält. Wenn ein Event auftritt, überprüft der System State Manager
+die \emph{State\_Table\_Entry}, um zu bestimmen, welcher Zustandsübergang ausgeführt werden soll udn ausgeführt werden darf. 
+
+Diese Architektur ermöglicht eine klare Trennung der logik und eine einfache Erweiterbarkeit, da 
+neue zustände oder Ereignisse hinzugefügt werden können, ohne die gesamte Logik zu verändern. Zudem wird die Wartbarkeit verbessert, da die Zustandslogik in klar definierten Klassen gekapselt ist.
+Mit dem nachteil alle inputs und outputs müssen über den System State Manager laufen, was zu einem Engpass führen könnte, wenn die Anzahl der Ereignisse oder Zustände stark zunimmt. Es könnte auch zu einer erhöhten Komplexität führen, wenn viele Zustände und Übergänge vorhanden sind, da die State\_Table sehr groß und schwer zu verwalten sein könnte.
+\subsubsection{Alternativen Software-Architektur}
+
+Eine alternative Architektur könnte auf einem stärker ereignisgesteuerten Ansatz basieren, bei dem die Subkomponenten direkt auf Ereignisse reagieren und weniger zentral koordiniert werden. 
+In diesem Fall könnte jede Subkomponente ihre eigenen Zustandsautomaten haben, die auf eingehende Ereignisse reagieren, ohne dass ein zentraler 
+System State Manager die Gesamtlogik steuert. Dies könnte zu einer dezentraleren und möglicherweise flexibleren Architektur führen, aber auch zu einer erhöhten Komplexität bei der Synchronisation und Fehlerbehandlung.
+
+Eine weitere Architektur könnte auf einem Service-basierten Ansatz basieren, bei dem jede Subkomponente als eigenständiger Service mit klar definierten Schnittstellen implementiert wird.
+Diese Services könnten über ein Messaging-System kommunizieren, um Ereignisse und Daten auszutauschen. Dies könnte die Modularität und Skalierbarkeit erhöhen, aber auch die Latenz und Komplexität der Kommunikation erhöhen.
+
+Insgesamt stellt das Klassendiagramm die Grundlage für die nachfolgende detaillierte Ausarbeitung dar und bildet die strukturelle Basis für die Implementierung der zustandsbasierten Steuerlogik.
+\newpage
 % Optional: wenn ihr die einzelnen Klassendiagramme später separat habt, hier weitere Platzhalter:
 % \paragraph{Weitere Klassendiagramme (optional)}
 % TODO: ggf. zusätzliche Klassendiagramme je Subsystem einfügen
