@@ -18,7 +18,7 @@ Der \textbf{System State Manager} kapselt die komplette Zustandslogik der Emerge
   \item zyklische Verarbeitung (Polling/Loop) für Eingänge und periodische Aufgaben (z.\,B. SpeedControl).
 \end{itemize}
 
-Die Handler (\texttt{Button Handler}, \texttt{LED Handler}, \texttt{Drive Controller Handler}, \texttt{Logging Handler},
+Die Handler (\texttt{Button Handler}, \texttt{LED Handler}, \texttt{Drive Controller Handler},\\ \texttt{Logging Handler},
 \texttt{TTC Handler}, \texttt{Communication Handler}, \texttt{Distance Handler}) stellen jeweils Schnittstellen zur Hardware bzw.
 zu anderen Knoten bereit und werden vom System State Manager orchestriert.
 
@@ -88,7 +88,7 @@ Die Tabelle besteht aus Einträgen \texttt{State\_Table\_Entry}:
 
 \subsubsection{Zustandsdiagramm}
 Abbildung~\ref{fig:dd_state_machine} zeigt die Zustände und Transitionen. Die wichtigsten Aktionen werden in den jeweiligen
-\textbf{onEntry()}-Beschreibungen festgelegt (Stop/Enable, LEDs/Warnlicht, Logging). Diese onEntry-Logik ist der zentrale
+\textbf{onEntry()}-Beschreibungen festgelegt (Stop/Enable,\\ LEDs/Warnlicht, Logging). Diese onEntry-Logik ist der zentrale
 Mechanismus, der nach \texttt{set\_IState(...)} immer ausgeführt wird.
 
 \begin{figure}[H]
@@ -187,7 +187,7 @@ sowie \texttt{logStateChange(old, new)} über den \texttt{Logging Handler}.
 Abbildung~\ref{fig:dd_seq_speedcontrol} zeigt die zyklische SpeedControl-Kette. Der System State Manager holt die aktuelle
 Geschwindigkeit über den \texttt{TTC Handler} (\texttt{getSpeed()}) und speichert diese als \texttt{current\_Speed}.
 Nur wenn der aktuelle Zustand \texttt{NormalOperation} ist, wird die Geschwindigkeit an den \texttt{Drive Controller Handler}
-übergeben (\texttt{speedControl(Speed)}). In Stop-/Error-Zuständen findet keine Speed-Weitergabe an die Fahrsteuerung statt,
+übergeben\\ (\texttt{speedControl(Speed)}). In Stop-/Error-Zuständen findet keine Speed-Weitergabe an die Fahrsteuerung statt,
 da dort per Definition ein \texttt{stopRequest()} aktiv ist.
 
 \begin{figure}[H]
@@ -203,10 +203,10 @@ Der System State Manager prüft dazu:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item über den \texttt{Communication Handler}: \texttt{isSoftStop()} (Mission Control),
   \item über den \texttt{Distance Handler}: \texttt{isInSafetyZone()},
-  \item über den \texttt{TTC Handler}: \texttt{getStopRequest()} (TTC-SafetyViolation/Stop-Anforderung).
+  \item über den \texttt{TTC Handler}: \texttt{getStopRequest()} (TTC-SafetyViolation/\\Stop-Anforderung).
 \end{itemize}
 Wenn \texttt{isSoftStopEvent == true} gilt, wird \texttt{set\_IState(SOFT-STOP)} ausgeführt. Danach laufen die standardisierten
-onEntry-Aktionen: \texttt{stopRequest()}, Warnlicht/Blinkzyklus aktivieren, Softstop-LED setzen und
+onEntry-Aktionen: \texttt{stopRequest()},\\ Warnlicht/Blinkzyklus aktivieren, Softstop-LED setzen und
 \texttt{logStateChange(old, SOFT-STOP)}.
 
 \begin{figure}[H]
