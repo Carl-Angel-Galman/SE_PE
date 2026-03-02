@@ -10,13 +10,30 @@
   \label{fig:overview_total}
 \end{figure}
 
-\subsubsection{Kurzbeschreibung}
-Abbildung~\ref{fig:overview_total} zeigt den Gesamtkontext der Emergency-Stop-Funktion innerhalb des Truck-Systems. Die Distanzsensorik wird auf der Komponente 
-\emph{Jetson Nano} verarbeitet, während die Hardware-I/O über die Truck-Knoten \emph{Master} und \emph{Slave} angebunden sind. Die Bedien- und Leitsoftware 
-\emph{Mission Control} kommuniziert über WLAN mit dem System und ermöglicht die Fernsteuerung, insbesondere das Senden von Stop- und Fahrfreigabesignalen.
+Abbildung~\ref{fig:overview_total} zeigt den Gesamtkontext der Emergency-Stop-Funktion 
+innerhalb des Truck-Systems. 
 
-Für den Emergency Stop sind insbesondere die Eingaben über Taster oder Fernsteuerung sowie die Ansteuerung von Aktorik relevant, um Stop- oder Fahrfreigaben umzusetzen. 
-Zusätzlich bilden die Distanzinformationen die Grundlage für die Berechnung der Time-To-Collision TTC und damit für softwarebasierte Stop-Entscheidungen.
+Die hochauflösende Distanzsensorik für die TTC 
+wird auf der Komponente \emph{Jetson Nano} ausgeführt.
+Die hochauflösenden Distanzdaten wird für die Berechnung der Time-To-Collision (TTC) verwendet,
+welche für die Abstands- und Geschwindigkeitsregelung in Normal Operation relevant ist
+
+Der \emph{Master} übernimmt die Anbindung der notwendigen Hardware für
+den \emph{Emergency-Stop} insbesondere die Tastschalter für den Soft-Stop 
+und die Signalisierung (z.\,B. Warnleuchten). Wenn der Soft-Stop-Taster gedrückt wird, 
+sendet der \emph{Master} ein entsprechendes Signal an den \emph{Slave}, 
+um die Not-Aus-Funktion zu aktivieren.
+
+Der \emph{Slave} ist für die Steuerung des \emph{Speedreglers} zuständig, indem 
+er die SollGeschwindigkeit des Fahrzeugs entsprechend einstellt. 
+Der \emph{Slave} ist außerdem für die Verarbeitung der \emph{Pilzknopf}-Eingabe zuständig, welche die Not-Aus-Funktion darstellt.
+
+Der \emph{WLAN Client} ermöglicht die Kommunikation mit der \emph{Mission Control} 
+über WLAN, um Stop- und Fahrfreigabesignale zu empfangen. Die Bedien- und Leitsoftware 
+\emph{Mission Control} kommuniziert über WLAN mit dem System und ermöglicht die 
+das Senden von Stop- und Fahrfreigabesignalen aus der Ferne. 
+Diese Signale werden vom \emph{WLAN Client} empfangen und an den 
+\emph{Slave} weitergeleitet, um die entsprechenden Aktionen umzusetzen.  
 
 
 
@@ -92,10 +109,13 @@ Die Architektur basiert auf einer klaren Trennung von Zuständigkeiten und einer
 Koordination durch den \emph{System State Manager}. Die Subkomponenten sind so gestaltet, dass 
 sie ihre spezifischen Funktionen erfüllen, während der \emph{System State Manager} die Gesamtlogik und Synchronisation übernimmt.
 
-Der System State Manager besitzt einen Verweis auf den aktuellen Zustand in Form eines Enums \emph{current\_state}. Die Klasse \emph{IState} 
-ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, 
+Der System State Manager besitzt einen Verweis auf den aktuellen Zustand in Form eines Enums \emph{current\_state}. 
+Die Klasse \emph{IState} ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, 
 die von den konkreten Zustandsklassen implementiert werden. 
 Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwendbaren Art und Weise realisiert.
+Alle möglichen 
+Zustandsübergängen werden in der \emph{State\_transition\_Table} gespeichert, bei einem Event verweist \emph{System State Manager}
+auf die \emph{State\_transition\_Table} und führt den Zustandsübergang aus. 
 Die Zustandswechsel werden mit einer \emph{State Table Entry} realisiert mittels der \emph{State Table Entry} Datenstruktur,
 die die aktuelle State, das Event und die nächste State enthält. Wenn ein Event auftritt, überprüft der System State Manager
 die \emph{State Table Entry}, um zu bestimmen, welcher Zustandsübergang ausgeführt werden soll udn ausgeführt werden darf. 
@@ -152,8 +172,8 @@ Dies könnte die Modularität und Skalierbarkeit erhöhen, aber auch die Latenz 
   \label{fig:deployment}
 \end{figure}
 
-Der TTC-Observer wird auf dem Jetson AGX implementiert, da für die TTC Berechnung die hochauflösenden Distanz benötigt werden, welche direkt von den 
-\emph{Intel Realsense} auf dem Jetson AGX verarbeitet werden. Aus diesem Knoten wird auch 
+Der TTC-Observer wird auf dem Jetson AGX implementiert, da für die TTC Berechnung die hochauflösenden Distanz benötigt werden, welche direkt von der
+hochauflösenden Sensorik auf dem Jetson AGX verarbeitet werden. Aus diesem Knoten wird auch 
 die Geschwindigkeit des Fahrzeugs an den \emph{System State Manager} weitergegeben.
 
 Der Arduino \emph{Master} übernimmt die Anbindung der notwendigen Hardware 
@@ -164,13 +184,7 @@ Der Arduino \emph{Slave} ist für die Anbindung der \emph{Drive Control Unit} zu
 Der \emph{Slave} hat direkten Zugriff auf den \emph{Speedregler}, daher wird 
 die \emph{Drive Control Unit} auf diesem Knoten implementiert. 
 
-Der Arduino \emph{Slave} ist auch mit dem Empfänger für die 
-\emph{Funkfernsteuerng(Empfänger)} verbunden, welcher die Stop- und Fahrfreigabesignale von der \emph{Mission Control} empfängt,
-daher wird das \emph{Emergency Stop} Subsystem auf diesem Knoten implementiert, da das \emph{Emergency-Modul}
-eine direkte Schnittstelle zu \emph{Mission-Control} benötigt.
 
-Der Arduino \emph{Slave} dient also als zentrale Steuereinheit für die Not-Aus-Funktion, da er direkten Zugriff auf die relevanten Hardwarekomponenten hat und die Signale von der Fernsteuerung empfängt.
-Damit erschließt sich auch als sinnvoll, das \emph{logging} in dieem Knoten zu implementieren, da hier alle relevanten Informationen für die Not-Aus-Funktion gesammelt werden können.
 
 
 % \subsubsection{Zuordnung der Komponenten}
