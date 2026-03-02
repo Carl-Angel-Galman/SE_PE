@@ -203,27 +203,28 @@ zwischen dem \emph{Emergency Stop}-Subsystem und
 dem \emph{TTC-Observer}-Subsystem. Der \emph{TTC-Observer}
 besitzt nur Zugriff auf die Funktionen des \emph{TTC Handler},
 welcher die Schnittstelle zum \emph{Emergency Stop} darstellt.
+Der
 Der \emph{TTC Observer} kann drei verschiedene Funktionen,
 basierend auf den berechneten Werten des TTC, aufrufen:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{stopRequest():} Stop Anforderung, wenn der berechnete TTC Wert in der Safety-Zone liegt.
-  \item \textbf{haltRequest():} Verzögerungs-Anforderung, wenn der berechnete TTC-Wert in der Interventions-Zone liegt.
-  \item \textbf{enableDriving():} Freigabe der Fahrfunktion, wenn der berechnete TTC-Wert in der Free-Zone liegt.
+  \item \textbf{stopRequest():} Stop Anforderung, wenn das Fahrzeug stoppen und nicht wieder losfahren soll. Dies hat einen Zustandswechsel zu \emph{Softstop} zur Folge.
+  \item \textbf{haltRequest():} Halt -Anforderung, wenn das Fahrzeug halten soll anschließend jedoch wieder weiterfahren darf sobald der TTC Wert wieder groß genug ist.
+  \item \textbf{enableDriving(speed):} Freigabe der Fahrfunktion, wenn der berechnete TTC-Wert groß genug ist. 
+  Der Parameter \emph{speed} gibt die Soll-Geschwindigkeit, welche vom \emph{TTC-Observer} berechnet wurde, vor.
 \end{itemize}
+Diese Funktionen haben nur einen Effekt, wenn die Distanz in dem Bereich der \emph{Intervention-Zone} liegt.
 Ob eine dieser drei Funktionen aufgerufen wurde,
 wird zyklisch von dem \emph{System State Manager}
 überprüft, um diese Aktion entsprechend umzusetzen.
 Dies geschieht alle 5ms, da es sich um eine sicherheitskritische Funktion handelt und somit eine schnelle Reaktionszeit gewährleistet sein muss.
-Zur Überprüfung stellt der \emph{TTC Handler} drei Getter-Funktionen bereit, welche den aktuellen Status der drei Funktionen zurückliefern:
+Zur Überprüfung stellt der \emph{TTC Handler} vier Getter-Funktionen bereit, welche den aktuellen Status der drei Funktionen zurückliefern:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{getStopRequest()}
   \item \textbf{getHaltRequest()}
   \item \textbf{getEnableDriving()}
+  \item \textbf{getSpeed()}
 \end{itemize}
-Der \emph{TTC-Observer} besorgt sich
-die aktuelle Geschwindigkeit des Trucks
-ebenfalls alle 5ms über die Funktion \textbf{getCurrentSpeed()} des \emph{TTC Handlers}.
-Dies gewährleistet, dass die TTC-Werte immer angemesen aktuell sind.
+
 
 \subsubsection{Sequence Diagram: EnvironmentControl Interface}
 \begin{figure}[H]
@@ -250,7 +251,11 @@ Die Schnittstelle zum \emph{EnvironmentControl Interface}
 bietet die Funktion \textbf{setLEDState}.
 Im Falle des Blinklichts wird die LED zyklisch an- und ausgeschaltet, um das Blinken zu realisieren.
 
-%TODO: Geschwindigkeisberechnung ergibt keinen Sinn
+Das \emph{EnvironmentControl Interface} stellt außerdem die Funktion \textbf{getDistance()} bereit, um die gemessenen Abstände der LiDAR-Sensoren zu erhalten.
+Diese Abstände werden vom \emph{Distance Handler} genutzt, um zu bestimmen, ob sich das Fahrzeug in der Safety-Zone befindet.
+Der \emph{System State Manager} ruft diese Informationen alle 5ms zyklisch ab, um die aktuelle Situation zu bewerten und entsprechend zu reagieren.
+Tritt dieser Fall ein, wird ein Soft-Stop auderhalb der Not-Aus-Funktion ausgelöst, um das Fahrzeug sicher zum Stillstand zu bringen.
+
 
 Die Abstraktion der Hardware-Interaktion ermöglicht einfache
 Erweiterungen oder Anpassungen der Hardware, ohne dass die Hauptlogik des \emph{Emergency Stop}-Subsystems geändert werden muss.
@@ -269,7 +274,7 @@ Erweiterungen oder Anpassungen der Hardware, ohne dass die Hauptlogik des \emph{
 Die Abbildung \ref{fig:seq_drive} zeigt die Interaktion zwischen dem \emph{Emergency Stop}-Subsystem und der \emph{Drive Control Unit}.
 Diese wird in dem \emph{Drive Controller Handler} abstrahiert.
 Der \emph{System State Manager} sendet die Fahrtanweisungen
-mithilfe der Funktionen \textbf{stopRequest()}, \textbf{enableDriving()} und \textbf{speedControl()}.
+mithilfe der Funktionen \textbf{stopRequest()}, \textbf{enableDriving()} und \textbf{speedControl(speed)}.
 Diese Funktionen leitet der \emph{Drive Controller Handler} an die entsprechenden Schnittstellenfunktionen der \emph{Drive Control Unit} weiter, um die gewünschten Aktionen umzusetzen.
 Die Abstraktion ermöglicht erneut einfache Änderungen an Software oder Hardware der Drive Control Unit, ohne dass die Hauptlogik des \emph{Emergency Stop}-Subsystems angepasst werden muss.
 
