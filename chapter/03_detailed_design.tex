@@ -39,7 +39,7 @@ wichtigsten Attributen und öffentlichen Operationen, die für die Implementieru
 \paragraph{Zentrale Attribute}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{\texttt{current\_Speed: uint32\_t}} \\
-  aktuell verwendete Geschwindigkeit. Diese wird zyklisch aktualisiert (vgl. Sequenzdiagramm~\ref{fig:dd_seq_speedcontrol}).
+  aktuelle Soll-Geschwindigkeit. Diese wird zyklisch aktualisiert (vgl. Sequenzdiagramm~\ref{fig:dd_seq_speedcontrol}).
   \item \textbf{\texttt{current\_State: IState}} \\
   Referenz auf das aktive State-Objekt (State Pattern). Zustandsabhängige Logik wird über \texttt{onEntry()} und \texttt{inStateCyclic()} ausgeführt.
   \item \textbf{\texttt{state\_transition\_Table: State\_Table[]}} \\
@@ -78,7 +78,6 @@ Die Tabelle besteht aus Einträgen \texttt{State\_Table\_Entry}:
     \]
   \item Ist eine Transition definiert, führt der State Manager den Zustandswechsel aus:
     \begin{itemize}[leftmargin=*, itemsep=2pt]
-      \item \texttt{current\_State.onExit()} (falls definiert),
       \item \texttt{current\_State := next\_State},
       \item \texttt{current\_State.onEntry()} (zustandsspezifische Aktionen),
       \item \texttt{LoggingHandler.logStateChange(old, next)}.
@@ -147,7 +146,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 \subsubsection{Prioritäten und Sicherheitsprinzip}
 Falls mehrere Ereignisse gleichzeitig auftreten, gilt folgende Priorität (sicherheitsorientiert):
 \[
-  \texttt{HardStop} \;>\; \texttt{Error} \;>\; \texttt{SoftStop} \;>\; \texttt{NormalOperation}
+  \texttt{Error} \;>\; \texttt{HardStop} \;>\; \texttt{SoftStop} \;>\; \texttt{NormalOperation}
 \]
 Beispiel: Wird in \texttt{NormalOperation} gleichzeitig ein SoftStop und der Pilztaster erkannt, wird \texttt{HardStop} gewählt.
 
@@ -226,7 +225,6 @@ Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung eindeu
         (oder explizit als ``force''/Safety-Override modelliert wurde).
   \item Bei Zustandswechsel gilt die Reihenfolge:
     \begin{enumerate}[leftmargin=*, itemsep=2pt]
-      \item \texttt{old.onExit()}
       \item \texttt{current\_State := target}
       \item \texttt{current\_State.onEntry()}
       \item \texttt{LoggingHandler.logStateChange(old, target)}

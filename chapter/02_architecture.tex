@@ -16,17 +16,17 @@ innerhalb des Truck-Systems.
 Die hochauflösende Distanzsensorik für die TTC 
 wird auf der Komponente \emph{Jetson Nano} ausgeführt.
 Die hochauflösenden Distanzdaten wird für die Berechnung der Time-To-Collision (TTC) verwendet,
-welche für die Abstands- und Geschwindigkeitsregelung in Normal Operation relevant ist
+welche für die Abstands- und Geschwindigkeitsregelung in Normal Operation relevant ist.
 
 Der \emph{Master} übernimmt die Anbindung der notwendigen Hardware für
-den \emph{Emergency-Stop} insbesondere die Tastschalter für den Soft-Stop 
+den \\ \emph{Emergency-Stop} insbesondere die Tastschalter für den Soft-Stop 
 und die Signalisierung (z.\,B. Warnleuchten). Wenn der Soft-Stop-Taster gedrückt wird, 
 sendet der \emph{Master} ein entsprechendes Signal an den \emph{Slave}, 
-um die Not-Aus-Funktion zu aktivieren.
+um die Soft-Stop-Funktion zu aktivieren.
 
 Der \emph{Slave} ist für die Steuerung des \emph{Speedreglers} zuständig, indem 
 er die SollGeschwindigkeit des Fahrzeugs entsprechend einstellt. 
-Der \emph{Slave} ist außerdem für die Verarbeitung der \emph{Pilzknopf}-Eingabe zuständig, welche die Not-Aus-Funktion darstellt.
+Der \emph{Slave} ist außerdem für die Verarbeitung der \emph{Pilzknopf}-Eingabe zuständig, welche die Hard-Stop-Funktion darstellt.
 
 Der \emph{WLAN Client} ermöglicht die Kommunikation mit der \emph{Mission Control} 
 über WLAN, um Stop- und Fahrfreigabesignale zu empfangen. Die Bedien- und Leitsoftware 
@@ -63,28 +63,28 @@ Diese Signale werden vom \emph{WLAN Client} empfangen und an den
 Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten 
 sowie deren Schnittstellen und Datenflüsse.
 
-Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision TTC und liefert die Aktuelle
-Geschwindigkeit des Fahrzeugs dem \emph{Emergency-Stop}. 
+Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision (TTC) und liefert die Aktuelle
+Geschwindigkeit des Fahrzeugs dem \\ \emph{Emergency-Stop}. 
 Auf Basis der Distanz-Berechnung TTC erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{Emergency-Stop}.
 
 Das \emph{EnvironmentControl Interface} stellt die Anbindung an die Hardware dar. Es liest die 
-Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{Emergency-Stop} 
+Zustände der Pilz- und Soft-Stop-Taster aus und leitet diese an den \emph{Emergency-Stop} 
 weiter. Zusätzlich steuert es die Warnleuchten und Soft-Stop-LEDs, basierend 
 auf den vom \emph{Emergency-Stop} vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung, wenn 
 das Fahrzeug in der Safety-Zone sich befindet.
 
 Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. 
-Die \emph{DriveControlUnit} empfängt die von \emph{TTC-Observer} generierten Soll-Geschwindigkeiten 
+Die \emph{DriveControlUnit} empfängt die von \emph{TTC-Observer} generierten \\ Soll-Geschwindigkeiten 
 und gibt diese an den \emph{Speedregler} weiter, um die Geschwindigkeit des Fahrzeugs entsprechend zu steuern.
 Die \emph{DriveControlUnit} empfängt außerdem die Stop- und Fahrfreigabeanforderungen vom \emph{Emergency-Stop} und setzt diese um, indem 
-Die \emph{DriveControlUnit} die entsprechenden Signale an den \emph{Speedregler} sendet, um das Fahrzeug zu stoppen oder die Fahrt freizugeben.
+Die \emph{DriveControlUnit} die entsprechenden Signale an den \emph{Speedregler} sendet, um das Fahrzeug zu stoppen, halten oder die Fahrt freizugeben.
 \newpage
 
 Der \emph{Emergency-Stop} übergibt die Zustandsinformationen an die anderen Subsysteme. Er 
 verarbeitet alle eingehenden Ereignisse aus den Subsystemen, verwaltet die Zustände und steuert 
 die Ausgabe von Stop- und Fahrfreigaben. Zudem koordiniert er die Interaktion zwischen den 
 Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden, 
-insbesondere im Hinblick auf die Geschwindigkeitssteuerung und die Reaktion auf Not-Aus- und Soft-Stop-Signale.
+insbesondere im Hinblick auf die Geschwindigkeitssteuerung und die Reaktion auf Hard-Stop- und Soft-Stop-Signale.
 
 \newpage
 
@@ -110,7 +110,7 @@ Koordination durch den \emph{System State Manager}. Die Subkomponenten sind so g
 sie ihre spezifischen Funktionen erfüllen, während der \emph{System State Manager} die Gesamtlogik und Synchronisation übernimmt.
 
 Der System State Manager besitzt einen Verweis auf den aktuellen Zustand in Form eines Enums \emph{current\_state}. 
-Die Klasse \emph{IState} ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, 
+Die Klasse \emph{IState} ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry} und \emph{inStateCyclic}, 
 die von den konkreten Zustandsklassen implementiert werden. 
 Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwendbaren Art und Weise realisiert.
 Alle möglichen 
@@ -123,7 +123,7 @@ die \emph{State Table Entry}, um zu bestimmen, welcher Zustandsübergang ausgef�
 Diese Architektur ermöglicht eine klare Trennung der logik und eine einfache Erweiterbarkeit, da 
 neue zustände oder Ereignisse hinzugefügt werden können, ohne die gesamte Logik zu verändern. Zudem wird die 
 Wartbarkeit verbessert, da die Zustandslogik in klar definierten Klassen gekapselt ist.
-Mit dem nachteil alle inputs und outputs müssen über den System State Manager laufen, was zu einem Engpass 
+Mit dem Nachteil alle inputs und outputs müssen über den System State Manager laufen, was zu einem Engpass 
 führen könnte, wenn die Anzahl der Ereignisse oder Zustände stark zunimmt. Es könnte auch zu einer erhöhten 
 Komplexität führen, wenn viele Zustände und Übergänge vorhanden sind, da die StateTable sehr groß und schwer zu verwalten sein könnte.
 
@@ -248,18 +248,18 @@ Zur Überprüfung stellt der \emph{TTC Handler} vier Getter-Funktionen bereit, w
   \label{fig:seq_envctrl}
 \end{figure}
 Die Abbildung \ref{fig:seq_envctrl} zeigt die Interaktion zwischen dem \emph{Emergency Stop}-Subsystem und dem \emph{EnvironmentControl Interface}.
-Der \emph{EnvironmentControl Interface} stellt Funktionen bereit, um die Zustände der Not-Aus- und Soft-Stop-Buttons abzufragen sowie die Signalisierung (z.\,B. LEDs) zu steuern.
+Der \emph{EnvironmentControl Interface} stellt Funktionen bereit, um die Zustände der Pilz- und Soft-Stop-Buttons abzufragen sowie die Signalisierung (z.\,B. LEDs) zu steuern.
 Des Weiteren bietet es die Daten der Abstandsmessung der LiDAR-Sensoren an.
 Der \emph{System State Manager} ruft zyklisch alle 5ms die Funktion \textbf{isButtonPressed()} auf, um die aktuellen Zustände der Buttons zu überprüfen.
 Der \emph{Button Handler} reicht diese Anfragen an die entsprechenden
 Schnittstellenfunktionen des \emph{EnvironmentControl Interface} weiter
-und erhält die aktuellen Zustände der Not-Aus- und Soft-Stop-Buttons zurück.
+und erhält die aktuellen Zustände der Pilz- und Soft-Stop-Buttons zurück.
 Diese Informationen werden anschließend dem \emph{System State Manager} zur Verfügung gestellt, um die entsprechenden Aktionen (z.\,B. Stoppen des Fahrzeugs) zu steuern.
 
 Die Interaktion mit den LEDs erfolgt über den
 \emph{LED Handler}. Der \emph{System State Manager}
 kann dessen Funktionen aufrufen, um die Signalisierung entsprechend der aktuellen Systemzustände zu steuern.
-Das Warning-Light (Blinklicht) auf dem Fahrzeug wird aktiviert, wenn sich das System im Not-Aus-Zustand befindet, um eine visuelle Warnung anzuzeigen.
+Das Warning-Light (Blinklicht) auf dem Fahrzeug wird aktiviert, wenn sich das System in einem der Stop-Zustände befindet, um eine visuelle Warnung anzuzeigen.
 Die SoftstopLED bezieht sich auf die LED um den Soft-Stop-Button.
 Die Schnittstelle zum \emph{EnvironmentControl Interface}
 bietet die Funktion \textbf{setLEDState}.
@@ -268,7 +268,7 @@ Im Falle des Blinklichts wird die LED zyklisch an- und ausgeschaltet, um das Bli
 Das \emph{EnvironmentControl Interface} stellt außerdem die Funktion \textbf{getDistance()} bereit, um die gemessenen Abstände der LiDAR-Sensoren zu erhalten.
 Diese Abstände werden vom \emph{Distance Handler} genutzt, um zu bestimmen, ob sich das Fahrzeug in der Safety-Zone befindet.
 Der \emph{System State Manager} ruft diese Informationen alle 5ms zyklisch ab, um die aktuelle Situation zu bewerten und entsprechend zu reagieren.
-Tritt dieser Fall ein, wird ein Soft-Stop auderhalb der Not-Aus-Funktion ausgelöst, um das Fahrzeug sicher zum Stillstand zu bringen.
+Tritt dieser Fall ein, wird ein Soft-Stop ausgelöst, um das Fahrzeug sicher zum Stillstand zu bringen.
 
 
 Die Abstraktion der Hardware-Interaktion ermöglicht einfache
@@ -290,6 +290,7 @@ Diese wird in dem \emph{Drive Controller Handler} abstrahiert.
 Der \emph{System State Manager} sendet die Fahrtanweisungen
 mithilfe der Funktionen \textbf{stopRequest()}, \textbf{enableDriving()} und \textbf{speedControl(speed)}.
 Diese Funktionen leitet der \emph{Drive Controller Handler} an die entsprechenden Schnittstellenfunktionen der \emph{Drive Control Unit} weiter, um die gewünschten Aktionen umzusetzen.
+Im Falle der Funktion \textbf{speedControl(speed)} wird auch ein Error-Status returniert, um Fehler bei der Geschwindigkeitssteuerung zu erkennen und entsprechend mit einem Zustandswechsel in den Error-Zustand zu reagieren.
 Die Abstraktion ermöglicht erneut einfache Änderungen an Software oder Hardware der Drive Control Unit, ohne dass die Hauptlogik des \emph{Emergency Stop}-Subsystems angepasst werden muss.
 
 \subsubsection{Sequence Diagram: Logging}
