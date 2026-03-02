@@ -46,25 +46,28 @@ Zusätzlich bilden die Distanzinformationen die Grundlage für die Berechnung de
 Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten 
 sowie deren Schnittstellen und Datenflüsse.
 
-Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision TTC. 
-Auf Basis dieser Berechnung erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{System State Manager}.
+Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision TTC und liefert die Aktuelle
+Geschwindigkeit des Fahrzeugs dem \emph{Emergency-Stop}. 
+Auf Basis der Distanz-Berechnung TTC erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{Emergency-Stop}.
 
 Das \emph{EnvironmentControl Interface} stellt die Anbindung an die Hardware dar. Es liest die 
-Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{System State Manager} 
-weiter. Zusätzlich steuert es die Aktorik, insbesondere Warnleuchten und Soft-Stop-LEDs, basierend 
-auf den vom System State Manager vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung.
+Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{Emergency-Stop} 
+weiter. Zusätzlich steuert es die Warnleuchten und Soft-Stop-LEDs, basierend 
+auf den vom \emph{Emergency-Stop} vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung, wenn 
+das Fahrzeug in der Safety-Zone sich befindet.
 
-Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. Außerdem liefert sie 
-die aktuelle Fahrzeuggeschwindigkeit, welche an den \emph{System State Manager} und den \emph{TTC-Observer} weitergegeben wird.
+Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. 
+Die \emph{DriveControlUnit} empfängt die von \emph{TTC-Observer} generierten Soll-Geschwindigkeiten 
+und gibt diese an den \emph{Speedregler} weiter, um die Geschwindigkeit des Fahrzeugs entsprechend zu steuern.
+Die \emph{DriveControlUnit} empfängt außerdem die Stop- und Fahrfreigabeanforderungen vom \emph{Emergency-Stop} und setzt diese um, indem 
+Die \emph{DriveControlUnit} die entsprechenden Signale an den \emph{Speedregler} sendet, um das Fahrzeug zu stoppen oder die Fahrt freizugeben.
 \newpage
 
-Der \emph{System State Manager} bildet die zentrale Steuereinheit des Emergency-Stop-Systems. Er 
+Der \emph{Emergency-Stop} übergibt die Zustandsinformationen an die anderen Subsysteme. Er 
 verarbeitet alle eingehenden Ereignisse aus den Subsystemen, verwaltet die Zustände und steuert 
 die Ausgabe von Stop- und Fahrfreigaben. Zudem koordiniert er die Interaktion zwischen den 
-Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden.
-
-Das \emph{Logging} Modul protokolliert Zustandsänderungen sowie Fehlerereignisse und ermöglicht 
-damit eine Nachvollziehbarkeit des Systemverhaltens.
+Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden, 
+insbesondere im Hinblick auf die Geschwindigkeitssteuerung und die Reaktion auf Not-Aus- und Soft-Stop-Signale.
 
 \newpage
 
@@ -89,7 +92,7 @@ Die Architektur basiert auf einer klaren Trennung von Zuständigkeiten und einer
 Koordination durch den \emph{System State Manager}. Die Subkomponenten sind so gestaltet, dass 
 sie ihre spezifischen Funktionen erfüllen, während der \emph{System State Manager} die Gesamtlogik und Synchronisation übernimmt.
 
-Der System State Manager besitzt eine Referenz auf die Aktuelle Instanz der IState-Klasse. Die Klasse \emph{IState} 
+Der System State Manager besitzt einen Verweis auf den aktuellen Zustand in Form eines Enums \emph{current\_state}. Die Klasse \emph{IState} 
 ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, 
 die von den konkreten Zustandsklassen implementiert werden. 
 Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwendbaren Art und Weise realisiert.
@@ -149,30 +152,48 @@ Dies könnte die Modularität und Skalierbarkeit erhöhen, aber auch die Latenz 
   \label{fig:deployment}
 \end{figure}
 
-\subsubsection{Zuordnung der Komponenten}
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Jetson AGX:} \emph{TTC-Observer}
-  \item \textbf{Arduino Mega ``Master'':} \emph{EnvironmentControl Interface}
-  \item \textbf{Arduino Mega ``Slave'':} \emph{Emergency Stop}, \emph{DriveControlUnit}, \emph{Logging}
-\end{itemize}
+Der TTC-Observer wird auf dem Jetson AGX implementiert, da für die TTC Berechnung die hochauflösenden Distanz benötigt werden, welche direkt von den 
+\emph{Intel Realsense} auf dem Jetson AGX verarbeitet werden. Aus diesem Knoten wird auch 
+die Geschwindigkeit des Fahrzeugs an den \emph{System State Manager} weitergegeben.
 
-\subsubsection{Begründung der Verteilung}
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Slave'':} sicherheitskritische Funktionen + Logging lokal.
-  \item \textbf{Arduino Mega ``Master'':} kapselt Hardware-I/O (Interface-Schicht).
-  \item \textbf{Jetson AGX:} TTC-Auswertung (\emph{TTC-Observer}) und Weitergabe an Emergency Stop.
-\end{itemize}
+Der Arduino \emph{Master} übernimmt die Anbindung der notwendigen Hardware 
+für die \emph{Emergency-Stop} Funktion, insbesondere die Tastschalter und die 
+Signalisierung (z.\,B. Warnleuchten). Daher wird der \emph{EnvironmentControl Interface} auf diesem Knoten implementiert. 
+
+Der Arduino \emph{Slave} ist für die Anbindung der \emph{Drive Control Unit} zuständig. 
+Der \emph{Slave} hat direkten Zugriff auf den \emph{Speedregler}, daher wird 
+die \emph{Drive Control Unit} auf diesem Knoten implementiert. 
+
+Der Arduino \emph{Slave} ist auch mit dem Empfänger für die 
+\emph{Funkfernsteuerng(Empfänger)} verbunden, welcher die Stop- und Fahrfreigabesignale von der \emph{Mission Control} empfängt,
+daher wird das \emph{Emergency Stop} Subsystem auf diesem Knoten implementiert, da das \emph{Emergency-Modul}
+eine direkte Schnittstelle zu \emph{Mission-Control} benötigt.
+
+Der Arduino \emph{Slave} dient also als zentrale Steuereinheit für die Not-Aus-Funktion, da er direkten Zugriff auf die relevanten Hardwarekomponenten hat und die Signale von der Fernsteuerung empfängt.
+Damit erschließt sich auch als sinnvoll, das \emph{logging} in dieem Knoten zu implementieren, da hier alle relevanten Informationen für die Not-Aus-Funktion gesammelt werden können.
+
+
+% \subsubsection{Zuordnung der Komponenten}
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Jetson AGX:} \emph{TTC-Observer}
+%   \item \textbf{Arduino Mega ``Master'':} \emph{EnvironmentControl Interface}
+%   \item \textbf{Arduino Mega ``Slave'':} \emph{Emergency Stop}, \emph{DriveControlUnit}, \emph{Logging}
+% \end{itemize}
+
+% \subsubsection{Begründung der Verteilung}
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Arduino Mega ``Slave'':} sicherheitskritische Funktionen + Logging lokal.
+%   \item \textbf{Arduino Mega ``Master'':} kapselt Hardware-I/O (Interface-Schicht).
+%   \item \textbf{Jetson AGX:} TTC-Auswertung (\emph{TTC-Observer}) und Weitergabe an Emergency Stop.
+% \end{itemize}
 
 % ==========================================================
 \subsection{Global Software Control}
-Dieser Abschnitt beschreibt die Interaktion
-zwischen dem \emph{Emergency Stop}-Subsystem und den restlichen Subsystemen.
-
 
 \subsubsection{Sequence Diagram: TTC}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{diagramms/Seq_TTC.png}
+  \includegraphics[width=0.75\textwidth]{diagramms/Seq_TTC.png}
   \caption{Sequence Diagram: Interaktion TTC-Observer zu TTC Handler}
   \label{fig:seq_ttc}
 \end{figure}
