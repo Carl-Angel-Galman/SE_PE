@@ -1,29 +1,50 @@
 \section{Einleitung}
 
 \subsection{Ziel und Zweck}
-Dieses System Design Document beschreibt die Architektur und das detaillierte Design der Subkomponente
-\emph{Emergency Stop} im Truck-System. Die in einer vorgelagerten Phase erstellte SRS wird als Grundlage vorausgesetzt; dieses Dokument konkretisiert diese
-Anforderungen in einem umsetzungsnahen Software-Design.
+Dieses System Design Document (SDD) beschreibt die Architektur sowie das detaillierte Software-Design der Subkomponente
+\emph{Emergency Stop} innerhalb des Truck-Systems. Eine zuvor bereitgestellte \emph{Software Requirements Specification} (SRS) wird als
+Grundlage vorausgesetzt; dieses Dokument konkretisiert die Anforderungen in einem umsetzungsnahen Entwurf und beschreibt die
+Schnittstellen, Zustände und Interaktionen der sicherheitskritischen Stopp-Funktion.
 
 \subsection{Einordnung im Gesamtsystem}
-Die Subkomponente \emph{Emergency Stop} ist eine sicherheitsrelevante Funktion innerhalb des Truck-Gesamtsystems.
-Sie verarbeitet Eingaben aus externen Systemen und von Hardware-Komponenten und führt deren Stopp befehle aus. Außerdem ist es Aufgabe des Systems, das diese Stopps geloggt und zurückvollziehbar sind.
+Die Subkomponente \emph{Emergency Stop} ist eine sicherheitsrelevante Funktion im Truck-Gesamtsystem. Sie verarbeitet Ereignisse
+und Signale aus Hardware-Eingängen (z.\,B. Pilztaster, Soft-Stop) sowie aus externen Software-Komponenten
+(z.\,B. Mission Control, TTC-Observer) und setzt daraus abgeleitete Stop- bzw. Fahrfreigabeanforderungen deterministisch um.
+Dabei agiert \emph{Emergency Stop} als vermittelnde und koordinierende Instanz zwischen den beteiligten Subsystemen,
+verwaltet den Systemzustand (Zustandsautomat) und stellt sicher, dass Zustandswechsel sowie sicherheitskritische Aktionen
+(Stop/Fahrfreigabe, Signalisierung, Logging) konsistent und nachvollziehbar ausgeführt werden.
 
 \subsection{Funktionsprinzip (Überblick)}
-Das \emph{Emergency Stop}-Verhalten basiert auf zwei zentralen Auslöseprinzipien:
+Das Verhalten von \emph{Emergency Stop} basiert auf einem zonen- und ereignisgetriebenen Ansatz. Zur Bewertung der Situation
+werden insbesondere drei Betriebsbereiche unterschieden:
+
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Hardware-Auslösung:} Der Pilzbutton führt zu einem sofortigen Stopp (Hard Stop). Beim Lösen des Pilzbuttons wird
-        in einen Soft Stop übergegangen, der anschließend gezielt gelöst werden kann.
-  \item \textbf{Software-Auslösung:} Das TTC-Modul liefert die \emph{Time-To-Collision} als Entscheidungsgrundlage für einen
-        softwareseitigen Stopp (Soft Stop). Im \textbf{Normalbetrieb} befindet sich das System in der \emph{Free Zone}.
-        Sinkt der TTC-Wert in den \textbf{kritischen Bereich} (rote \emph{Safety Zone}), sendet das TTC-Modul eine \emph{Stop Request}
-        an die Subkomponente \emph{Emergency Stop}. Diese führt den Stopp entsprechend der Zustandslogik aus.
+  \item \textbf{Safety Zone:} Befindet sich ein Objekt in unmittelbarer Nähe (Distanz $< 15\,\mathrm{cm}$), wird \textbf{immer}
+        ein sofortiger Stopp ausgelöst. Dieser Fall ist unabhängig von einer TTC-Bewertung und hat höchste Sicherheitspriorität.
+  \item \textbf{Intervention Zone:} In diesem Bereich ist das Fahren grundsätzlich möglich, jedoch wird eine zusätzliche
+        Bewertungslogik herangezogen. Die Entscheidung, ob ein Stopp sinnvoll bzw. erforderlich ist, erfolgt durch den
+        \emph{TTC-Observer} (Time-To-Collision). Der TTC-Observer ist \textbf{nicht Bestandteil dieser Arbeit}; seine Ergebnisse
+        (z.\,B. Stop-/Halt-/Enable-Requests und Sollgeschwindigkeit) werden als externe Ereignisse/Schnittstellensignale
+        betrachtet und vom \emph{Emergency Stop} verarbeitet.
+  \item \textbf{Free Zone:} In diesem Bereich besteht keine Einschränkung durch sicherheitskritische Distanzbedingungen; das
+        Fahrzeug darf uneingeschränkt fahren. Der \emph{Emergency Stop} gibt die Fahrfunktion frei und übergibt die im
+        Normalbetrieb relevanten Ansteuerungen (z.\,B. Sollgeschwindigkeit) an die Fahrregelung.
+\end{itemize}
+
+Neben der zonenbasierten Auslösung existieren zwei zentrale Auslöseprinzipien:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Hardware-Auslösung (Hard Stop):} Der Pilztaster führt zu einem sofortigen Stopp (Hard Stop) und bleibt
+        aktiv, bis der Taster gelöst wird. Nach dem Lösen wird in einen \emph{Soft Stop} übergegangen, der anschließend
+        gezielt quittiert bzw. freigegeben werden kann.
+  \item \textbf{Software-Auslösung (Soft Stop):} Stop-Anforderungen können durch externe Software-Komponenten (insbesondere
+        TTC-Observer sowie Mission Control) ausgelöst werden. Der \emph{Emergency Stop} setzt diese Anforderungen gemäß
+        Zustandslogik in einen Soft Stop um.
 \end{itemize}
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.8\textwidth]{pictures/Abstand.png}
-  \caption{Illustration des Zonenmodells als Grundlage TTC-basierter Entscheidungen (Normalbetrieb vs. Intervention/Safety) Quelle: Stimac}
+  \caption{Illustration des Zonenmodells als Grundlage distanz- und TTC-basierter Entscheidungen (Free/Intervention/Safety) Quelle: Stimac}
   \label{fig:zones_ttc}
 \end{figure}
 
@@ -36,17 +57,18 @@ Das \emph{Emergency Stop}-Verhalten basiert auf zwei zentralen Auslöseprinzipie
 
 \subsection{Scope und Abgrenzung}
 Der Scope dieses Dokuments umfasst ausschließlich die truckseitige Subkomponente \emph{Emergency Stop} inklusive ihrer
-Schnittstellen, der internen Architekturstruktur sowie der detaillierten Ausgestaltung des Verhaltens.
-Andere Komponenten des Truck-Systems werden nicht entworfen und nur soweit erwähnt, wie sie als externe Nachbarn oder
-Schnittstellen für \emph{Emergency Stop} relevant sind.
+Schnittstellen, der internen Architekturstruktur sowie der detaillierten Ausgestaltung des zustandsbasierten Verhaltens
+(Zustandsautomat, Transition-Logik, onEntry-/zyklische Aktionen). Andere Komponenten des Truck-Systems werden nicht entworfen
+und nur soweit beschrieben, wie sie als externe Nachbarn oder Schnittstellen für \emph{Emergency Stop} relevant sind.
 
 \subsection{Systemgrenze und externe Schnittstellen}
-Folgende Nachbarsysteme, Schnittstellen und Hardware-Elemente werden als \textbf{extern gegeben} angenommen und sind nicht Bestandteil des
-internen Designs (sie werden in den Diagrammen als externe Komponenten bzw. externe Hardware dargestellt):
+Folgende Nachbarsysteme, Schnittstellen und Hardware-Elemente werden als \textbf{extern gegeben} angenommen und sind nicht
+Bestandteil der Implementierung innerhalb dieses Dokuments (sie erscheinen in den Diagrammen als externe Komponenten bzw.
+externe Hardware). Ihre Signale und Funktionen werden über definierte Schnittstellen eingebunden:
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{Externe Software-/Systemschnittstellen:}
-  \emph{Mission Control}, \emph{Environment Control Interface}, \emph{TTC}, \emph{Logging}, \emph{Drive Control Unit}
+  \emph{Mission Control}, \emph{Environment Control Interface}, \emph{TTC-Observer}, \emph{Logging}, \emph{Drive Control Unit}
   \item \textbf{Externe Hardware:}
-  \emph{Emergency Button (Pilzbutton)}, \emph{Soft-Stop Button}, \emph{Warnleuchten}, \emph{Soft-Stop LED}
+  \emph{Pilztaster}, \emph{Soft-Stop Button}, \emph{Warnleuchten}, \emph{Soft-Stop LED}
 \end{itemize}
