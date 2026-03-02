@@ -71,7 +71,7 @@ Die Tabelle besteht aus Einträgen \texttt{State\_Table\_Entry}:
   \item \texttt{state\_to\_go: SYSTEM\_State}
 \end{itemize}
 
-\paragraph{Algorithmus (informell)}
+\paragraph{Algorithmus}
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
   \item Eingänge/Ereignisse werden zyklisch erfasst (Buttons, TTC, Mission Control).
   \item Für jedes erkannte Ereignis wird die Transition-Tabelle nach einem passenden Eintrag durchsucht:
@@ -111,7 +111,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{SoftStop}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs aktivieren, Softstop-LED aktivieren (Blinkzyklus starten),
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED aktivieren,
         \texttt{logStateChange(...)}.
   \item \textbf{inStateCyclic():} Polling der Eingänge (Buttons, Mission Control, TTC). LED-Blinkzyklus wird bedient.
   \item Wechsel nach \texttt{NormalOperation} bei Freigabe/Ereignis ``Driving Enable'' und ohne Fehler.
@@ -121,7 +121,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{NormalOperation}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} Driving aktivieren, LEDs entsprechend deaktivieren/setzen, \texttt{logStateChange(...)}.
+  \item \textbf{onEntry():} Driving aktivieren, LEDs deaktivieren, \texttt{logStateChange(...)}.
   \item \textbf{inStateCyclic():} Eingänge prüfen; Geschwindigkeit berechnen und weiterreichen (vgl. SpeedControl-Sequenz).
   \item Wechsel nach \texttt{SoftStop} bei TTC-SafetyViolation oder SoftStop-Button.
   \item Wechsel nach \texttt{HardStop} bei Pilztaster.
@@ -130,7 +130,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{HardStop}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs an, Softstop-LED an (Signal für Stop-Zustand),
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED an, \\
         \texttt{logStateChange(...)}.
   \item \textbf{inStateCyclic():} Pilztaster prüfen; Kommandos aus Mission Control/TTC werden weiterhin bewertet,
         jedoch bleibt Stop aktiv, bis definierte Freigabebedingungen erfüllt sind.
@@ -140,7 +140,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{Error}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs an, Logging des Zustandswechsels.
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED an, Logging des Zustandswechsels.
   \item \textbf{inStateCyclic():} Prüft Fehlerauflösung; Rückkehr in einen Stop-Zustand, sobald Fehler quittiert/behoben ist.
   \item Wechsel nach \texttt{HardStop} wenn zusätzlich Pilztaster gedrückt und kein weiterer Fehler.
   \item Wechsel nach \texttt{SoftStop} wenn Fehler behoben (\emph{No Error}) und kein Pilztaster aktiv.
@@ -208,8 +208,8 @@ die standardisierten onEntry-Aktionen ausführt: StopRequest, LED/Warnlicht, Log
 \end{figure}
 
 % ==========================================================
-\subsection{Implementierungshinweise (präzise Regeln)}
-Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung durch Dritte eindeutig möglich ist.
+\subsection{Implementierungshinweise}
+Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung eindeutig möglich ist.
 
 \subsubsection{Zustandswechsel (\texttt{set\_IState})}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
@@ -235,7 +235,7 @@ Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung durch 
 
 \subsubsection{LED-/Warnlicht-Outputs}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item Warnlicht ist in allen Stop-/Error-Zuständen aktiv (mindestens blinkend).
+  \item Warnlicht ist in allen Stop-/Error-Zuständen aktiv.
   \item Softstop-LED signalisiert Stop-Zustand (SoftStop/HardStop) und wird in \texttt{NormalOperation} deaktiviert.
   \item Blinkzyklen werden in \texttt{inStateCyclic()} bedient, die Aktivierung/Deaktivierung startet in \texttt{onEntry()}.
 \end{itemize}
@@ -246,16 +246,3 @@ Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung durch 
   \item Rückkehr aus \texttt{Error} erfolgt nur, wenn \emph{No Error} erkannt wurde und die passenden Freigabebedingungen
         aus dem Zustandsdiagramm erfüllt sind.
 \end{itemize}
-
-% ==========================================================
-\subsection{Zusammenfassung}
-Der System State Manager implementiert die Emergency-Stop-Funktion als \textbf{table-based state machine} mit klaren,
-zustandsgebundenen Aktionen über \textbf{onEntry()}. Die bereitgestellten Detailed-Design-Diagramme
-(klassendiagramm, state machine, sequenzen) definieren:
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item wann und wie Zustandswechsel stattfinden,
-  \item welche Aktionen im Eintritt in einen Zustand zwingend auszuführen sind,
-  \item welche Handler-Aufrufe (Drive/LED/Logging/TTC/Buttons) in welchen Situationen erfolgen,
-  \item wie die zyklische Verarbeitung (Polling + SpeedControl) strukturiert ist.
-\end{itemize}
-Damit ist die Implementierung für Dritte eindeutig ableitbar.
