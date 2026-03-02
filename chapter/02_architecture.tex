@@ -89,13 +89,15 @@ Die Architektur basiert auf einer klaren Trennung von Zuständigkeiten und einer
 Koordination durch den \emph{System State Manager}. Die Subkomponenten sind so gestaltet, dass 
 sie ihre spezifischen Funktionen erfüllen, während der \emph{System State Manager} die Gesamtlogik und Synchronisation übernimmt.
 
-Der System State Manager besitzt eine Referenz auf die Aktuelle Instanz der IState-Klasse. Die Klasse \emph{IState} 
+Der System State Manager besitzt einen Verweis auf den aktuellen Zustand in Form eines Enums \emph{current\_state}. Die Klasse \emph{IState} 
 ist eine Abstrakte Klasse und definiert die abstrakten Methoden \emph{onEntry}, \emph{onCyclic} und \emph{onExit}, 
 die von den konkreten Zustandsklassen implementiert werden. 
 Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwendbaren Art und Weise realisiert.
 Die Zustandswechsel werden mit einer \emph{State Table Entry} realisiert mittels der \emph{State Table Entry} Datenstruktur,
 die die aktuelle State, das Event und die nächste State enthält. Wenn ein Event auftritt, überprüft der System State Manager
 die \emph{State Table Entry}, um zu bestimmen, welcher Zustandsübergang ausgeführt werden soll udn ausgeführt werden darf. 
+
+\newpage
 
 Diese Architektur ermöglicht eine klare Trennung der logik und eine einfache Erweiterbarkeit, da 
 neue zustände oder Ereignisse hinzugefügt werden können, ohne die gesamte Logik zu verändern. Zudem wird die 
@@ -149,30 +151,48 @@ Dies könnte die Modularität und Skalierbarkeit erhöhen, aber auch die Latenz 
   \label{fig:deployment}
 \end{figure}
 
-\subsubsection{Zuordnung der Komponenten}
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Jetson AGX:} \emph{TTC-Observer}
-  \item \textbf{Arduino Mega ``Master'':} \emph{EnvironmentControl Interface}
-  \item \textbf{Arduino Mega ``Slave'':} \emph{Emergency Stop}, \emph{DriveControlUnit}, \emph{Logging}
-\end{itemize}
+Der TTC-Observer wird auf dem Jetson AGX implementiert, da für die TTC Berechnung die hochauflösenden Distanz benötigt werden, welche direkt von den 
+\emph{Intel Realsense} auf dem Jetson AGX verarbeitet werden. Aus diesem Knoten wird auch 
+die Geschwindigkeit des Fahrzeugs an den \emph{System State Manager} weitergegeben.
 
-\subsubsection{Begründung der Verteilung}
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{Arduino Mega ``Slave'':} sicherheitskritische Funktionen + Logging lokal.
-  \item \textbf{Arduino Mega ``Master'':} kapselt Hardware-I/O (Interface-Schicht).
-  \item \textbf{Jetson AGX:} TTC-Auswertung (\emph{TTC-Observer}) und Weitergabe an Emergency Stop.
-\end{itemize}
+Der Arduino \emph{Master} übernimmt die Anbindung der notwendigen Hardware 
+für die \emph{Emergency-Stop} Funktion, insbesondere die Tastschalter und die 
+Signalisierung (z.\,B. Warnleuchten). Daher wird der \emph{EnvironmentControl Interface} auf diesem Knoten implementiert. 
+
+Der Arduino \emph{Slave} ist für die Anbindung der \emph{Drive Control Unit} zuständig. 
+Der \emph{Slave} hat direkten Zugriff auf den \emph{Speedregler}, daher wird 
+die \emph{Drive Control Unit} auf diesem Knoten implementiert. 
+
+Der Arduino \emph{Slave} ist auch mit dem Empfänger für die 
+\emph{Funkfernsteuerng(Empfänger)} verbunden, welcher die Stop- und Fahrfreigabesignale von der \emph{Mission Control} empfängt,
+daher wird das \emph{Emergency Stop} Subsystem auf diesem Knoten implementiert, da das \emph{Emergency-Modul}
+eine direkte Schnittstelle zu \emph{Mission-Control} benötigt.
+
+Der Arduino \emph{Slave} dient also als zentrale Steuereinheit für die Not-Aus-Funktion, da er direkten Zugriff auf die relevanten Hardwarekomponenten hat und die Signale von der Fernsteuerung empfängt.
+Damit erschließt sich auch als sinnvoll, das \emph{logging} in dieem Knoten zu implementieren, da hier alle relevanten Informationen für die Not-Aus-Funktion gesammelt werden können.
+
+
+% \subsubsection{Zuordnung der Komponenten}
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Jetson AGX:} \emph{TTC-Observer}
+%   \item \textbf{Arduino Mega ``Master'':} \emph{EnvironmentControl Interface}
+%   \item \textbf{Arduino Mega ``Slave'':} \emph{Emergency Stop}, \emph{DriveControlUnit}, \emph{Logging}
+% \end{itemize}
+
+% \subsubsection{Begründung der Verteilung}
+% \begin{itemize}[leftmargin=*, itemsep=2pt]
+%   \item \textbf{Arduino Mega ``Slave'':} sicherheitskritische Funktionen + Logging lokal.
+%   \item \textbf{Arduino Mega ``Master'':} kapselt Hardware-I/O (Interface-Schicht).
+%   \item \textbf{Jetson AGX:} TTC-Auswertung (\emph{TTC-Observer}) und Weitergabe an Emergency Stop.
+% \end{itemize}
 
 % ==========================================================
 \subsection{Global Software Control}
-Dieser Abschnitt beschreibt die Interaktion
-zwischen dem \emph{Emergency Stop}-Subsystem und den restlichen Subsystemen.
-
 
 \subsubsection{Sequence Diagram: TTC}
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{diagramms/Seq_TTC.png}
+  \includegraphics[width=0.75\textwidth]{diagramms/Seq_TTC.png}
   \caption{Sequence Diagram: Interaktion TTC-Observer zu TTC Handler}
   \label{fig:seq_ttc}
 \end{figure}
