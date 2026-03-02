@@ -185,6 +185,22 @@ Der \emph{Slave} hat direkten Zugriff auf den \emph{Speedregler}, daher wird
 die \emph{Drive Control Unit} auf diesem Knoten implementiert. 
 
 
+\newpage 
+
+\subsection{Programmiersprache für die Implementierung der Software}
+
+Die Implementierung der Software für die Subkomponente \emph{Emergency Stop} wird in der Programmiersprache C++ erfolgen. 
+C++ bietet eine hohe Leistung und Effizienz, was insbesondere für sicherheitskritische Systeme von Vorteil ist.
+Zudem ermöglicht C++ eine gute Unterstützung für objektorientierte Programmierung, was die Umsetzung der Zustandslogik und die Strukturierung der Software erleichtert.
+Besonders für die Implementierung der Abstrakten Klasse \emph{IState} und der konkreten Zustandsklassen bietet C++ eine klare Syntax und leistungsfähige Features, 
+um die Zustandsübergänge und die damit verbundenen Aktionen effizient zu implementieren.
+
+Da das \emph{Emergency Stop} auf einem Arduino implementiert wird, hat die Wahl von C++ 
+auch den Vorteil, dass C++ auf dem Arduino Platform weit verbreitet ist, was die 
+Entwicklung und Integration der Software erleichtert.
+Dies bedeutet, dass die Software direkt auf der Hardware ausgeführt werden kann, ohne dass zusätzliche
+Abstraktionsschichten oder Übersetzungen mit Bibliotheken erforderlich sind, was die 
+Leistung und Zuverlässigkeit des Systems weiter verbessert.
 
 
 % \subsubsection{Zuordnung der Komponenten}
@@ -363,3 +379,4 @@ Der \emph{TTC Handler} gibt einen Fehlerstatus zurück, der vom \emph{System Sta
 In diesem Fall wird der Systemzustand auf "Error" gesetzt, um anzuzeigen, dass ein Fehler aufgetreten ist.
 Dieser stellt, entsprechend des Eintritts in den Error-Zustand, eine Stop-Anforderung an den \emph{Drive Controller Handler}.
 Der Fehler wird außerdem protokolliert, um die Diagnose und Fehlerbehebung zu erleichern.
+
