@@ -46,25 +46,28 @@ Zusätzlich bilden die Distanzinformationen die Grundlage für die Berechnung de
 Abbildung~\ref{fig:subsystems_context} zeigt die für den Emergency Stop relevanten Subkomponenten 
 sowie deren Schnittstellen und Datenflüsse.
 
-Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision TTC. 
-Auf Basis dieser Berechnung erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{System State Manager}.
+Der \emph{TTC-Observer} verarbeitet die Distanzdaten und berechnet die Time-To-Collision TTC und liefert die Aktuelle
+Geschwindigkeit des Fahrzeugs dem \emph{Emergency-Stop}. 
+Auf Basis der Distanz-Berechnung TTC erzeugt er Stop- und Fahrfreigabeereignisse und übermittelt diese an den \emph{Emergency-Stop}.
 
 Das \emph{EnvironmentControl Interface} stellt die Anbindung an die Hardware dar. Es liest die 
-Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{System State Manager} 
-weiter. Zusätzlich steuert es die Aktorik, insbesondere Warnleuchten und Soft-Stop-LEDs, basierend 
-auf den vom System State Manager vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung.
+Zustände der Not-Aus- und Soft-Stop-Taster aus und leitet diese an den \emph{Emergency-Stop} 
+weiter. Zusätzlich steuert es die Warnleuchten und Soft-Stop-LEDs, basierend 
+auf den vom \emph{Emergency-Stop} vorgegebenen Zuständen. Darüber hinaus stellt es die gemessene Distanz zur Verfügung, wenn 
+das Fahrzeug in der Safety-Zone sich befindet.
 
-Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. Außerdem liefert sie 
-die aktuelle Fahrzeuggeschwindigkeit, welche an den \emph{System State Manager} und den \emph{TTC-Observer} weitergegeben wird.
+Die \emph{DriveControlUnit} setzt die Stop- und Fahrfreigabeanforderungen um. 
+Die \emph{DriveControlUnit} empfängt die von \emph{TTC-Observer} generierten Soll-Geschwindigkeiten 
+und gibt diese an den \emph{Speedregler} weiter, um die Geschwindigkeit des Fahrzeugs entsprechend zu steuern.
+Die \emph{DriveControlUnit} empfängt außerdem die Stop- und Fahrfreigabeanforderungen vom \emph{Emergency-Stop} und setzt diese um, indem 
+Die \emph{DriveControlUnit} die entsprechenden Signale an den \emph{Speedregler} sendet, um das Fahrzeug zu stoppen oder die Fahrt freizugeben.
 \newpage
 
-Der \emph{System State Manager} bildet die zentrale Steuereinheit des Emergency-Stop-Systems. Er 
+Der \emph{Emergency-Stop} übergibt die Zustandsinformationen an die anderen Subsysteme. Er 
 verarbeitet alle eingehenden Ereignisse aus den Subsystemen, verwaltet die Zustände und steuert 
 die Ausgabe von Stop- und Fahrfreigaben. Zudem koordiniert er die Interaktion zwischen den 
-Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden.
-
-Das \emph{Logging} Modul protokolliert Zustandsänderungen sowie Fehlerereignisse und ermöglicht 
-damit eine Nachvollziehbarkeit des Systemverhaltens.
+Subkomponenten und stellt sicher, dass sicherheitskritische Anforderungen konsistent umgesetzt werden, 
+insbesondere im Hinblick auf die Geschwindigkeitssteuerung und die Reaktion auf Not-Aus- und Soft-Stop-Signale.
 
 \newpage
 
@@ -96,8 +99,6 @@ Dadurch wird die Zustandsübergangskontrolle in einer zentralen und wiederverwen
 Die Zustandswechsel werden mit einer \emph{State Table Entry} realisiert mittels der \emph{State Table Entry} Datenstruktur,
 die die aktuelle State, das Event und die nächste State enthält. Wenn ein Event auftritt, überprüft der System State Manager
 die \emph{State Table Entry}, um zu bestimmen, welcher Zustandsübergang ausgeführt werden soll udn ausgeführt werden darf. 
-
-\newpage
 
 Diese Architektur ermöglicht eine klare Trennung der logik und eine einfache Erweiterbarkeit, da 
 neue zustände oder Ereignisse hinzugefügt werden können, ohne die gesamte Logik zu verändern. Zudem wird die 
