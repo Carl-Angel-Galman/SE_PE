@@ -1,4 +1,4 @@
-v\newpage
+\newpage
 \section{Detailed Design -- Emergency Stop (System State Manager)}
 \label{sec:detailed_design}
 
@@ -12,15 +12,15 @@ Logging) über die jeweiligen Handler anstößt.
 Der \textbf{System State Manager} kapselt die komplette Zustandslogik der Emergency-Stop-Funktion:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item zentrale Verwaltung von \texttt{SYSTEM\_State} (Initialization, SoftStop, NormalOperation, Error, HardStop),
-  \item Verarbeitung externer Ereignisse (\texttt{Event}) aus Button-/Schalter-Eingängen, TTC-Observer und Mission Control,
+  \item Verarbeitung externer Ereignisse (\texttt{Event}) aus Button-/Schalter-Eingängen, TTC-Observer sowie Mission Control,
   \item deterministischer Zustandswechsel über eine \textbf{Transition-Tabelle} (\emph{table-based state machine}),
   \item Ausführung von zustandsspezifischen \textbf{onEntry}-Aktionen (Stop/Enable, LEDs, Logging),
-  \item zyklische Verarbeitung (Polling/Loop) für Eingänge und periodische Aufgaben (z.\,B. Speed-Control/Speed-Update).
+  \item zyklische Verarbeitung (Polling/Loop) für Eingänge und periodische Aufgaben (z.\,B. SpeedControl).
 \end{itemize}
 
-Die Handler (\texttt{Button Handler}, \texttt{LED Handler}, \texttt{Drive Controller Handler}, \texttt{Logging Handler},
-\texttt{TTC Handler}, \texttt{Communication Handler}) stellen jeweils Schnittstellen zur Hardware bzw. zu anderen Knoten bereit
-und werden vom System State Manager orchestriert.
+Die Handler (\texttt{Button Handler}, \texttt{LED Handler}, \texttt{Drive Controller Handler},\\ \texttt{Logging Handler},
+\texttt{TTC Handler}, \texttt{Communication Handler}, \texttt{Distance Handler}) stellen jeweils Schnittstellen zur Hardware bzw.
+zu anderen Knoten bereit und werden vom System State Manager orchestriert.
 
 % ==========================================================
 \subsection{Klassendesign (Detailed)}
@@ -39,10 +39,9 @@ wichtigsten Attributen und öffentlichen Operationen, die für die Implementieru
 \paragraph{Zentrale Attribute}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
   \item \textbf{\texttt{current\_Speed: uint32\_t}} \\
-  aktuell berechnete Geschwindigkeit, zyklisch aktualisiert (vgl. Sequenzdiagramm SpeedControl).
+  aktuell verwendete Geschwindigkeit. Diese wird zyklisch aktualisiert (vgl. Sequenzdiagramm~\ref{fig:dd_seq_speedcontrol}).
   \item \textbf{\texttt{current\_State: IState}} \\
-  Referenz auf das aktive State-Objekt (State Pattern). Zustandsabhängige Logik wird über \texttt{onEntry()}, \texttt{inStateCyclic()}
-  und \texttt{onExit()} ausgeführt.
+  Referenz auf das aktive State-Objekt (State Pattern). Zustandsabhängige Logik wird über \texttt{onEntry()} und \texttt{inStateCyclic()} ausgeführt.
   \item \textbf{\texttt{state\_transition\_Table: State\_Table[]}} \\
   Transition-Tabelle der table-based state machine. Jede Tabellenzeile beschreibt:
   \texttt{(past\_state, change\_event) -> state\_to\_go}.
@@ -53,7 +52,6 @@ wichtigsten Attributen und öffentlichen Operationen, die für die Implementieru
   \item \textbf{\texttt{init(): void}} Initialisiert den State Manager und die benötigten Handler/Subsysteme.
   \item \textbf{\texttt{cyclic(): void}} Zyklischer ``Tick'' des Systems (Polling/Ereignisverarbeitung/State-Cyclic).
   \item \textbf{\texttt{set\_IState(SYSTEM\_State): void}} Zustandswechsel über die Transition-Tabelle und Ausführung der onEntry-Aktionen.
-  \item \textbf{\texttt{calculate\_Current\_Speed(): void}} Berechnet die aktuelle Geschwindigkeit aus Distanzmessung.
 \end{itemize}
 
 % ==========================================================
@@ -73,7 +71,7 @@ Die Tabelle besteht aus Einträgen \texttt{State\_Table\_Entry}:
 
 \paragraph{Algorithmus}
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-  \item Eingänge/Ereignisse werden zyklisch erfasst (Buttons, TTC, Mission Control).
+  \item Eingänge/Ereignisse werden zyklisch erfasst (Buttons, TTC, Mission Control / Kommunikation, Safety-Zone).
   \item Für jedes erkannte Ereignis wird die Transition-Tabelle nach einem passenden Eintrag durchsucht:
     \[
       (current\_state, event) \mapsto next\_state
@@ -90,7 +88,7 @@ Die Tabelle besteht aus Einträgen \texttt{State\_Table\_Entry}:
 
 \subsubsection{Zustandsdiagramm}
 Abbildung~\ref{fig:dd_state_machine} zeigt die Zustände und Transitionen. Die wichtigsten Aktionen werden in den jeweiligen
-\textbf{onEntry()}-Beschreibungen festgelegt (Stop/Enable, LEDs/Warnlicht, Logging). Diese onEntry-Logik ist der zentrale
+\textbf{onEntry()}-Beschreibungen festgelegt (Stop/Enable,\\ LEDs/Warnlicht, Logging). Diese onEntry-Logik ist der zentrale
 Mechanismus, der nach \texttt{set\_IState(...)} immer ausgeführt wird.
 
 \begin{figure}[H]
@@ -111,9 +109,10 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{SoftStop}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED aktivieren,
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warnlicht aktiv/blinken, Softstop-LED setzen, \\
         \texttt{logStateChange(...)}.
-  \item \textbf{inStateCyclic():} Polling der Eingänge (Buttons, Mission Control, TTC). LED-Blinkzyklus wird bedient.
+  \item \textbf{inStateCyclic():} Polling der Eingänge (Buttons, Mission Control/Kommunikation, TTC-StopRequest, Safety-Zone).
+        LED-Blinkzyklus wird bedient.
   \item Wechsel nach \texttt{NormalOperation} bei Freigabe/Ereignis ``Driving Enable'' und ohne Fehler.
   \item Wechsel nach \texttt{HardStop} bei Pilztaster (Notaus).
   \item Wechsel nach \texttt{Error} bei Fehlerereignis.
@@ -121,18 +120,17 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{NormalOperation}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} Driving aktivieren, LEDs deaktivieren, \texttt{logStateChange(...)}.
-  \item \textbf{inStateCyclic():} Eingänge prüfen; Geschwindigkeit berechnen und weiterreichen (vgl. SpeedControl-Sequenz).
-  \item Wechsel nach \texttt{SoftStop} bei TTC-SafetyViolation oder SoftStop-Button.
+  \item \textbf{onEntry():} Driving aktivieren, Stop-/Warnanzeigen deaktivieren,\\ \texttt{logStateChange(...)}.
+  \item \textbf{inStateCyclic():} Eingänge prüfen; SpeedControl ausführen (vgl. Sequenzdiagramm~\ref{fig:dd_seq_speedcontrol}).
+  \item Wechsel nach \texttt{SoftStop} bei TTC-SafetyViolation / StopRequest oder SoftStop-Button.
   \item Wechsel nach \texttt{HardStop} bei Pilztaster.
   \item Wechsel nach \texttt{Error} bei Fehlerereignis.
 \end{itemize}
 
 \paragraph{HardStop}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED an, \\
-        \texttt{logStateChange(...)}.
-  \item \textbf{inStateCyclic():} Pilztaster prüfen; Kommandos aus Mission Control/TTC werden weiterhin bewertet,
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warnlicht aktiv/blinken, Softstop-LED setzen,\\ \texttt{logStateChange(...)}.
+  \item \textbf{inStateCyclic():} Pilztaster prüfen; weitere Kommandos aus Mission Control/TTC werden weiterhin bewertet,
         jedoch bleibt Stop aktiv, bis definierte Freigabebedingungen erfüllt sind.
   \item Wechsel nach \texttt{SoftStop} bei \emph{Pilztaster released} und ohne Fehler.
   \item Wechsel nach \texttt{Error} bei Fehlerereignis.
@@ -140,7 +138,7 @@ Für die Implementierung werden folgende Zustandsregeln festgelegt:
 
 \paragraph{Error}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item \textbf{onEntry():} \texttt{stopRequest()}, Warn-LEDs blinken, Softstop-LED an, Logging des Zustandswechsels.
+  \item \textbf{onEntry():} \texttt{stopRequest()}, Warnlicht aktiv/blinken, Softstop-LED setzen, Logging des Zustandswechsels.
   \item \textbf{inStateCyclic():} Prüft Fehlerauflösung; Rückkehr in einen Stop-Zustand, sobald Fehler quittiert/behoben ist.
   \item Wechsel nach \texttt{HardStop} wenn zusätzlich Pilztaster gedrückt und kein weiterer Fehler.
   \item Wechsel nach \texttt{SoftStop} wenn Fehler behoben (\emph{No Error}) und kein Pilztaster aktiv.
@@ -157,7 +155,7 @@ Beispiel: Wird in \texttt{NormalOperation} gleichzeitig ein SoftStop und der Pil
 \subsection{Zyklischer Ablauf (\texttt{cyclic()}) und Ereignisgewinnung}
 Der System State Manager wird zyklisch (z.\,B. alle 5\,ms) aufgerufen. In jedem Zyklus werden:
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-  \item Eingänge gelesen (Buttons/TTC/Mission Control),
+  \item Eingänge gelesen (Buttons, TTC, Mission Control/Kommunikation, Safety-Zone),
   \item ggf. Zustandswechsel über Transition-Tabelle durchgeführt,
   \item zustandsspezifische zyklische Logik (\texttt{inStateCyclic()}) ausgeführt,
   \item periodische Aufgaben wie SpeedControl aktualisiert.
@@ -168,9 +166,15 @@ Der System State Manager wird zyklisch (z.\,B. alle 5\,ms) aufgerufen. In jedem 
 Die folgenden Sequenzdiagramme zeigen die zentralen Interaktionen des System State Managers im Detailed Design.
 
 \subsubsection{Button $\rightarrow$ SoftStop/HardStop}
-Abbildung~\ref{fig:dd_seq_button_hardstop} zeigt das Polling der Buttons im 5\,ms-Loop. Bei erkannten Tastendrücken wird über
-\texttt{set\_IState(...)} der Zielzustand gesetzt. Anschließend werden die \textbf{onEntry()}-Aktionen ausgeführt:
-Stop-Anforderung über Drive Controller Handler, Warnlicht-/Softstop-LED Steuerung über LED Handler und Logging des Zustandswechsels.
+Abbildung~\ref{fig:dd_seq_button_hardstop} zeigt das Polling der Buttons im 5\,ms-Loop. Der System State Manager fragt über den
+\texttt{Button Handler} zyklisch \texttt{isButtonpressed(Button)} ab. Bei erkannten Tastendrücken wird abhängig vom Button
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item bei \textbf{Pilztaster}: \texttt{set\_IState(HARD STOP)}
+  \item bei \textbf{Softstop}: \texttt{set\_IState(SOFT-STOP)}
+\end{itemize}
+ausgeführt. Anschließend werden die \textbf{onEntry()}-Aktionen des Zielzustands ausgelöst:
+\texttt{stopRequest()} über den \texttt{Drive Controller Handler}, Warnlicht-/Softstop-LED Steuerung über den \texttt{LED Handler}
+sowie \texttt{logStateChange(old, new)} über den \texttt{Logging Handler}.
 
 \begin{figure}[H]
   \centering
@@ -180,30 +184,35 @@ Stop-Anforderung über Drive Controller Handler, Warnlicht-/Softstop-LED Steueru
 \end{figure}
 
 \subsubsection{SpeedControl und Speed-Weitergabe}
-Abbildung~\ref{fig:dd_seq_speedcontrol} zeigt die zyklische Speed-Control-Kette. Der State Manager berechnet die Geschwindigkeit
-aus der Distanzmessung (über \texttt{EnvironmentControl Interface}) und gibt sie
-\begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item an den \texttt{Drive Control Handler} (zur Steuerung/Regelung) und
-  \item an den \texttt{TTC Handler} (für TTC/Schutzlogik)
-\end{itemize}
-weiter. Damit sind Safety-Auswertung und Fahrsteuerung konsistent mit dem aktuellen Fahrzustand gekoppelt.
+Abbildung~\ref{fig:dd_seq_speedcontrol} zeigt die zyklische SpeedControl-Kette. Der System State Manager holt die aktuelle
+Geschwindigkeit über den \texttt{TTC Handler} (\texttt{getSpeed()}) und speichert diese als \texttt{current\_Speed}.
+Nur wenn der aktuelle Zustand \texttt{NormalOperation} ist, wird die Geschwindigkeit an den \texttt{Drive Controller Handler}
+übergeben\\ (\texttt{speedControl(Speed)}). In Stop-/Error-Zuständen findet keine Speed-Weitergabe an die Fahrsteuerung statt,
+da dort per Definition ein \texttt{stopRequest()} aktiv ist.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms_detailed/Seq_SpeedControl.png}
-  \caption{Detailed Sequence: SpeedControl -- Distanz lesen, Speed berechnen, an DriveControl und TTC weitergeben}
+  \caption{Detailed Sequence: SpeedControl -- Speed über TTC holen und (nur in NormalOperation) an DriveControl weitergeben}
   \label{fig:dd_seq_speedcontrol}
 \end{figure}
 
-\subsubsection{TTC / Mission Control $\rightarrow$ SoftStop}
-Abbildung~\ref{fig:dd_seq_ttc_stoprequest} zeigt den SoftStop-Trigger durch TTC-SafetyViolation oder Kommandos aus Mission Control.
-Der TTC Handler (bzw. Communication Handler) triggert den Zustandswechsel im System State Manager, welcher anschließend wieder
-die standardisierten onEntry-Aktionen ausführt: StopRequest, LED/Warnlicht, Logging.
+\subsubsection{TTC / Mission Control / Safety-Zone $\rightarrow$ SoftStop}
+Abbildung~\ref{fig:dd_seq_ttc_stoprequest} zeigt die Erkennung eines SoftStop-Ereignisses aus mehreren Quellen.
+Der System State Manager prüft dazu:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item über den \texttt{Communication Handler}: \texttt{isSoftStop()} (Mission Control),
+  \item über den \texttt{Distance Handler}: \texttt{isInSafetyZone()},
+  \item über den \texttt{TTC Handler}: \texttt{getStopRequest()} (TTC-SafetyViolation/\\Stop-Anforderung).
+\end{itemize}
+Wenn \texttt{isSoftStopEvent == true} gilt, wird \texttt{set\_IState(SOFT-STOP)} ausgeführt. Danach laufen die standardisierten
+onEntry-Aktionen: \texttt{stopRequest()},\\ Warnlicht/Blinkzyklus aktivieren, Softstop-LED setzen und
+\texttt{logStateChange(old, SOFT-STOP)}.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{diagramms_detailed/Seq_TTC_COM Stoprequest.png}
-  \caption{Detailed Sequence: SoftStop-Trigger durch TTC/Mission Control inkl. onEntry-Aktionen}
+  \caption{Detailed Sequence: SoftStop-Trigger durch TTC/Mission Control/Safety-Zone inkl. onEntry-Aktionen}
   \label{fig:dd_seq_ttc_stoprequest}
 \end{figure}
 
@@ -235,8 +244,8 @@ Dieses Kapitel fixiert die wichtigsten Regeln, damit eine Implementierung eindeu
 
 \subsubsection{LED-/Warnlicht-Outputs}
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-  \item Warnlicht ist in allen Stop-/Error-Zuständen aktiv.
-  \item Softstop-LED signalisiert Stop-Zustand (SoftStop/HardStop) und wird in \texttt{NormalOperation} deaktiviert.
+  \item Warnlicht ist in allen Stop-/Error-Zuständen aktiv (Blinken/aktiv je nach LED-Handler-Implementierung).
+  \item Softstop-LED signalisiert Stop-Zustand (SoftStop/HardStop/Error) und wird in \texttt{NormalOperation} deaktiviert.
   \item Blinkzyklen werden in \texttt{inStateCyclic()} bedient, die Aktivierung/Deaktivierung startet in \texttt{onEntry()}.
 \end{itemize}
 
